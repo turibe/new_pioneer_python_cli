@@ -9,6 +9,8 @@ import threading
 from modes_display import modeDisplayMap
 from modes_set import modeSetMap, inverseModeSetMap
 
+from optparse import OptionParser
+
 # HOST = "10.0.1.32"      
 HOST = "192.168.1.70"
 
@@ -455,10 +457,17 @@ class ReadThread(threading.Thread):
 	read_loop(self.tn)
 
 
-# TODO: add command-line options to control, for example, displaying the from screen info;
+# TODO: add command-line options to control, for example, displaying the info from the screen;
 # also, for one-off commands.
 
 if __name__ == "__main__":
+
+      parser = OptionParser()
+      
+      (options, args) = parser.parse_args()
+      if len(args) > 0:
+	 HOST = args[0]
+
       tn = telnetlib.Telnet(HOST)
       # tn.set_debuglevel(100)
 

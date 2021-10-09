@@ -1,4 +1,4 @@
-#!/opt/local/bin/python
+#!/usr/bin/python
 
 import sys
 import telnetlib
@@ -12,7 +12,7 @@ from modes_set import modeSetMap, inverseModeSetMap
 from optparse import OptionParser
 
 # HOST = "10.0.1.32"      
-HOST = "192.168.1.70"
+HOST = "192.168.86.32"
 
 _mode = None
 
@@ -70,7 +70,8 @@ commandMap = { "on" : "PO",
         # switch inputs:
 	"bd" : "25FN",
         "dvd" : "04FN",
-	"sat" : "06FN",
+        "appleaudio" : "05FN",
+	"amazontv" : "06FN",
 	"video" : "10FN",
 	"hdmi1" : "19FN",
 	"hdmi2" : "20FN",
@@ -78,6 +79,8 @@ commandMap = { "on" : "PO",
 	"hdmi4" : "22FN",
 	"hdmi5" : "23FN",
 	"hdmi6" : "24FN",
+	"apple" : "25FN",
+	"appletv" : "25FN",
 	"hdmi7" : "34FN",
 	"net" : "26FN", # cyclic
         "cd" : "01FN",

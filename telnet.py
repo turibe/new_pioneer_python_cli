@@ -1,10 +1,10 @@
-#!/usr/bin/python
+#!/usr/bin/python3
 
 import sys
 import telnetlib
 import os
 import time
-import urllib
+import urllib.parse
 import threading
 from modes_display import modeDisplayMap
 from modes_set import modeSetMap, inverseModeSetMap
@@ -120,13 +120,13 @@ commandMap = { "on" : "PO",
 
 def print_help():
     l = commandMap.keys()
-    l.sort()
+    # l.sort()
     for x in l:
-	print x
+        print(x)
 
 
 def send(tn, s):
-    tn.write(s + b"\r\n")
+    tn.write(s.encode() + b"\r\n")
 
 def readline(tn):
     s = tn.read_until(b"\r\n")
@@ -143,8 +143,8 @@ def decodeFL(s):
           url += "%"
           url += s[i:i+2]
           i += 2
-    # print "Url is", url
-    return urllib.unquote(url)
+    print("Url is", url)
+    return urllib.parse.unquote(url)
 
 def parseError(s):
     if s == "E02" : return "NOT AVAILABLE NOW"
@@ -155,53 +155,53 @@ def parseError(s):
     return None
 
 def decodeAST(s):
-    if not s.startswith('AST'):
-	return None
+    if not s.startswith(b'AST'):
+        return None
     s = s[3:]
-    print "Audio input signal:", decode_ais( s[0:2] )
-    print "Audio input frequency:", decode_aif( s[2:4] )
+    print("Audio input signal:" + decode_ais( s[0:2] ))
+    print("Audio input frequency:" + decode_aif( s[2:4] ))
     # The manual starts counting at 1, so to fix this off-by-one, we do:
     s = '-' + s
     # channels...
-    print "Input Channels:",
-    if int(s[5]): print "Left, ",
-    if int(s[6]): print "Center, ",
-    if int(s[7]): print "Right, ",
-    if int(s[8]): print "SL, ",
-    if int(s[9]): print "SR, ",
-    if int(s[10]): print "SBL, ",
-    if int(s[11]): print "S, ",
-    if int(s[12]): print "SBR, ",
-    if int(s[13]): print "LFE, ",
-    if int(s[14]): print "FHL, ",
-    if int(s[15]): print "FHR, ",
-    if int(s[16]): print "FWL, ",
-    if int(s[17]): print "FWR, ",
-    if int(s[18]): print "XL, ",
-    if int(s[19]): print "XC, ",
-    if int(s[20]): print "XR, ",
-    print ""
-    print "Output Channels:",
-    if int(s[26]): print "Left, ",
-    if int(s[27]): print "Center, ",
-    if int(s[28]): print "Right, ",
-    if int(s[29]): print "SL, ",
-    if int(s[30]): print "SR, ",
-    if int(s[31]): print "SBL, ",
-    if int(s[32]): print "S, ",
-    if int(s[33]): print "SBR, ",
-    if int(s[34]): print "LFE, ",
-    if int(s[35]): print "FHL, ",
-    if int(s[36]): print "FHR, ",
-    if int(s[37]): print "FWL, ",
-    if int(s[38]): print "FWR, ",
-    print ""
+    print("Input Channels:"),
+    if int(s[5]): print("Left, "),
+    if int(s[6]): print("Center, "),
+    if int(s[7]): print("Right, "),
+    if int(s[8]): print("SL, "),
+    if int(s[9]): print("SR, "),
+    if int(s[10]): print("SBL, "),
+    if int(s[11]): print("S, "),
+    if int(s[12]): print("SBR, "),
+    if int(s[13]): print("LFE, "),
+    if int(s[14]): print("FHL, "),
+    if int(s[15]): print("FHR, "),
+    if int(s[16]): print("FWL, "),
+    if int(s[17]): print("FWR, "),
+    if int(s[18]): print("XL, "),
+    if int(s[19]): print("XC, "),
+    if int(s[20]): print("XR, "),
+    print("")
+    print("Output Channels:"),
+    if int(s[26]): print("Left, "),
+    if int(s[27]): print("Center, "),
+    if int(s[28]): print("Right, "),
+    if int(s[29]): print("SL, "),
+    if int(s[30]): print("SR, "),
+    if int(s[31]): print("SBL, "),
+    if int(s[32]): print("S, "),
+    if int(s[33]): print("SBR, "),
+    if int(s[34]): print("LFE, "),
+    if int(s[35]): print("FHL, "),
+    if int(s[36]): print("FHR, "),
+    if int(s[37]): print("FWL, "),
+    if int(s[38]): print("FWR, "),
+    print("")
     sys.stdout.flush()
     return True
 
 def decode_vst(s):
-    if not s.startswith("VST"):
-	return None
+    if not s.startswith(b"VST"):
+        return None
     s = s[3:]
     s = '=' + s
 
@@ -247,13 +247,13 @@ def db_level(s):
 
 def decodeTone(s):
     if s.startswith("TR"):
-	return "treble at " + db_level(s[2:4])
+        return "treble at " + db_level(s[2:4])
     if s.startswith("BA"):
-	return "bass at " + db_level(s[2:4])
+        return "bass at " + db_level(s[2:4])
     if s == "TO0":
-	return "tone off"
+        return "tone off"
     if s == "TO1":
-	return "tone on"
+        return "tone on"
     return None
 
 sourceMap = {"00" : "Intenet Radio",
@@ -280,29 +280,29 @@ typeMap = {"20" : "Track",
 	}
 
 screenTypeMap = {
-	"00" : "Message",
-	"01" : "List",
-	"02" : "Playing (Play)",
-	"03" : "Playing (Pause)",
-	"04" : "Playing (Fwd)",
-	"05" : "Playing (Rev)",
-	"06" : "Playing (Stop)",
-	"99" : "Invalid"
-	}
+        "00" : "Message",
+        "01" : "List",
+        "02" : "Playing (Play)",
+        "03" : "Playing (Pause)",
+        "04" : "Playing (Fwd)",
+        "05" : "Playing (Rev)",
+        "06" : "Playing (Stop)",
+        "99" : "Invalid"
+        }
 
 def decodeGeh(s):
     if s.startswith("GDH"):
-	bytes = s[3:]
-	return "items " + bytes[0:5] + " to " + bytes[5:10] + " of total " + bytes[10:]
+        bytes = s[3:]
+        return "items " + bytes[0:5] + " to " + bytes[5:10] + " of total " + bytes[10:]
     if s.startswith("GBH"):
-	return "max list number: " + s[2:]
+        return "max list number: " + s[2:]
     if s.startswith("GCH"):
-	return screenTypeMap.get(s[3:5], "unknown")  + " - " + s
+        return screenTypeMap.get(s[3:5], "unknown")  + " - " + s
     if s.startswith('GHH'):
-	source = s[2:]
-	return "source: " + sourceMap.get(source, "unknown")
+        source = s[2:]
+        return "source: " + sourceMap.get(source, "unknown")
     if not s.startswith('GEH'):
-	return None
+        return None
     s = s[3:]
     line = s[0:2]
     focus = s[2]
@@ -318,117 +318,119 @@ def read_loop(tn):
     while True:
       count += 1
       s = readline(tn)
+      s = s.decode()
       err = parseError(s)
       if err:
-         print count, "ERROR: ", err
+         print(count, "ERROR: ", err)
          continue
       tone = decodeTone(s)
       if tone:
-	print tone
-	continue
+        print(tone)
+        continue
       geh = decodeGeh(s)
       if geh:
-	print geh
-	continue
+        print(geh)
+        continue
+      # print("s has type", type(s)) # bytes
       fl = decodeFL(s)
       if fl:
-         sys.stdout.write("%s\r" % fl)
-         continue
+        sys.stdout.write("%s\r" % fl)
+        continue
       if s.startswith('FN'):
-	 input = inputMap.get(s[2:], "unknown (%s)" % s)
-	 print "Input is", input
-	 continue
+        input = inputMap.get(s[2:], "unknown (%s)" % s)
+        print("Input is", input)
+        continue
       if s.startswith('ATW'):
-	 print "loudness is ",
-	 print "on" if s == "ATW1" else "off"
-	 continue
+        print("loudness is "),
+        print("on" if s == "ATW1" else "off")
+        continue
       if s.startswith('ATC'):
-	 print "eq is ",
-	 print "on" if s == "ATC1" else "off"
-	 continue
+        print("eq is "),
+        print("on" if s == "ATC1" else "off")
+        continue
       if s.startswith('ATD'):
-	 print "standing wave is ",
-	 print "on" if s == "ATD1" else "off"
-	 continue
+        print("standing wave is "),
+        print("on" if s == "ATD1" else "off")
+        continue
       if s.startswith('ATE'):
-	 num = s[3:]
-	 if num >= "00" and num <= "16":
-	    print "Phase control: " + num + "ms"
-	 else:
-	    if num == "97":
-		print "Phase control: AUTO"
-	    elif num == "98":
-		print "Phase control: UP"
-	    elif num == "99":
-		print "Phase control: DOWN"
-	    else:
-		print "Phase control: unknown"
-	 continue
+        num = s[3:]
+        if num >= "00" and num <= "16":
+            print("Phase control: " + num + "ms")
+        else:
+            if num == "97":
+                print("Phase control: AUTO")
+            elif num == "98":
+                print("Phase control: UP")
+            elif num == "99":
+                print("Phase control: DOWN")
+            else:
+                print("Phase control: unknown")
+        continue
       m = translateMode(s)
       if m:
-      	print "Listening mode is %s (%s)" % (m, s)
-	continue
+        print("Listening mode is %s (%s)" % (m, s))
+        continue
       if s.startswith('AST') and decodeAST(s):
-	continue
+        continue
       if s.startswith('SR'):
-	code = s[2:]
-	v = modeSetMap.get(code, None)
-	if v:
-	   print "mode is %s (%s)" % (v, s)
-	   continue
+        code = s[2:]
+        v = modeSetMap.get(code, None)
+        if v:
+            print("mode is %s (%s)" % (v, s))
+            continue
       # default:
-      print count, s
+      print(count, s)
 
 def write_loop(tn):
     while True:
-      command = raw_input("command: ").strip()
+      command = input("command: ").strip()
       if command == "quit" or command == "exit":
-	  print "Read thread says bye-bye!"
-	  # sys.exit()
-	  return
+        print("Read thread says bye-bye!")
+        # sys.exit()
+        return
       if command == "status":
-	  get_status(tn)
-          continue
+        get_status(tn)
+        continue
       if command == "help" or command == "?":
-	 print_help()
-	 continue
+        print_help()
+        continue
       if command.startswith("select"):
-	 s = second_arg(command).rjust(2,"0") + "GFI"
-	 send(tn, s)
-	 continue
+         s = second_arg(command).rjust(2,"0") + "GFI"
+         send(tn, s)
+         continue
       if command.startswith("display"):
-	 s = second_arg(command).rjust(5, "0") + "GCI" # may need to pad with zeros.
-	 send(tn, s)
-	 continue
+         s = second_arg(command).rjust(5, "0") + "GCI" # may need to pad with zeros.
+         send(tn, s)
+         continue
       s = commandMap.get(command, None)
       if s:
-      	send(tn, s)
-	continue
+        send(tn, s)
+        continue
       if command.startswith("mode"):
-	change_mode(tn, command)
-	continue
-      if command <> "":
-	print "Sending raw command " + command
-    	sys.stdout.flush()
-	send(tn, command) # try original one
+        change_mode(tn, command)
+        continue
+      if command != "":
+        print("Sending raw command " + command)
+        sys.stdout.flush()
+        send(tn, command) # try original one
 
 def change_mode(tn, command):
     l = command.split(" ")
     if len(l) < 2:
-	return None
+        return None
     modestring = " ".join(l[1:])
     m = inverseModeSetMap.get(modestring, None)
     if m:
-	send(tn, m + "SR")
-	return True
-    print "Unknown " + command
+        send(tn, m + "SR")
+        return True
+    print("Unknown " + command)
     return None
 
 def second_arg(cmd):
-	l = cmd.split(" ")
-	if len(l) < 2:
-	   return ""
-	return l[1].strip()
+        l = cmd.split(" ")
+        if len(l) < 2:
+            return ""
+        return l[1].strip()
 
 # Listening mode, in the order they appear in the spreadsheet. 
 # looks like PDF doc has different ones (it's from 2010)
@@ -437,7 +439,7 @@ def second_arg(cmd):
 
 def translateMode(s):
     if not s.startswith('LM'):
-	return None
+        return None
     s = s[2:]
     m = modeDisplayMap.get(s, None)
     return m or "Unknown"
@@ -454,10 +456,10 @@ def get_status(tn):
 class ReadThread(threading.Thread):
       """ This thread reads the lines coming back from telnet """
       def __init__(self, tn):
-	self.tn = tn
-	threading.Thread.__init__(self)
+        self.tn = tn
+        threading.Thread.__init__(self)
       def run(self):
-	read_loop(self.tn)
+        read_loop(self.tn)
 
 
 # TODO: add command-line options to control, for example, displaying the info from the screen;
@@ -469,7 +471,7 @@ if __name__ == "__main__":
       
       (options, args) = parser.parse_args()
       if len(args) > 0:
-	 HOST = args[0]
+        HOST = args[0]
 
       tn = telnetlib.Telnet(HOST)
       # tn.set_debuglevel(100)
@@ -477,7 +479,7 @@ if __name__ == "__main__":
       time.sleep(1)
 
       s = tn.read_very_eager()
-      print "very eager: ", s
+      print("very eager: ", s)
 
       send(tn, "?P") # to wake up
 

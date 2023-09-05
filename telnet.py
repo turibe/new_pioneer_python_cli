@@ -133,6 +133,7 @@ def readline(tn):
     return s[:-2]
 
 def decodeFL(s):
+    # print("Original Url string is:", s)
     if not s.startswith('FL'):
           return None
     s = s[2:] #  the FL
@@ -143,8 +144,9 @@ def decodeFL(s):
           url += "%"
           url += s[i:i+2]
           i += 2
-    print("Url is", url)
-    return urllib.parse.unquote(url)
+    result = urllib.parse.unquote(url)
+    # print("Url is", url, "result is", result)
+    return result
 
 def parseError(s):
     if s == "E02" : return "NOT AVAILABLE NOW"
@@ -155,7 +157,7 @@ def parseError(s):
     return None
 
 def decodeAST(s):
-    if not s.startswith(b'AST'):
+    if not s.startswith('AST'):
         return None
     s = s[3:]
     print("Audio input signal:" + decode_ais( s[0:2] ))
@@ -200,7 +202,7 @@ def decodeAST(s):
     return True
 
 def decode_vst(s):
-    if not s.startswith(b"VST"):
+    if not s.startswith("VST"):
         return None
     s = s[3:]
     s = '=' + s

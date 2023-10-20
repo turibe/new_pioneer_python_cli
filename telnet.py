@@ -21,8 +21,8 @@ inputMap = {
 	"44" : "Media Server",
 	"45" : "Favorites",
 	"17" : "iPod/USB",
-	"05" : "TV",
-	"01" : "CD",
+	"05" : "DVR",
+	"01" : "TV",
 	"13" : "USB-DAC",
 	"02" : "TUNER",	
 	"00" : "PHONO",
@@ -72,6 +72,7 @@ commandMap = { "on" : "PO",
         "dvd" : "04FN",
         "appleaudio" : "05FN",
 	"amazontv" : "06FN",
+        # "sat" : "06FN",
 	"video" : "10FN",
 	"hdmi1" : "19FN",
 	"hdmi2" : "20FN",
@@ -83,9 +84,9 @@ commandMap = { "on" : "PO",
 	"appletv" : "25FN",
 	"hdmi7" : "34FN",
 	"net" : "26FN", # cyclic
-        "cd" : "01FN",
+        "tv" : "01FN",
 	"iradio" : "38FN",
-	"tv" : "15FN",
+	"dvr" : "15FN",
         "radio" : "02FN",
         "tuner" : "02FN",
         "phono" : "00FN", # invalid command
@@ -478,7 +479,7 @@ if __name__ == "__main__":
       tn = telnetlib.Telnet(HOST)
       # tn.set_debuglevel(100)
 
-      time.sleep(1)
+      # time.sleep(0.5)
 
       s = tn.read_very_eager()
       print("very eager: ", s)

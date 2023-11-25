@@ -5,13 +5,15 @@ Barebones python command-line interface (cli) for controlling an internet-connec
 
 Tested on a pioneer SC-1222-K.
 
-Usage: find out your AVR's IP address.
+Usage:
 
-Edit the telnet.py file, set the variable HOST to it, and do "python telnet.py <host>".
+1. Find out your AVR's IP address.
+2. Edit the telnet.py file, set the variable HOST to it, and do "python3 telnet.py <host>".
 
 Some commands:
-up
-down
-mode
+up   [volume up]
+down [volume down]
+mode [cycle through stereo and surround audio modes]
+<input_name> [switch to given input]
 
 Use control-D to exit.

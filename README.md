@@ -19,8 +19,8 @@ Disclaimer: *Use at your own risk.*
 
 - `up`              [volume up]
 - `down`            [volume down]
-- `<integer>`       [if positive, increase volume this number of times, capped at 5]
-- `-<integer>`      [if negative, decrease volume this number of times]
+- `<integer>`       [if positive, increase volume this number of times, capped at 10]
+- `-<integer>`      [if negative, decrease volume this number of times, capped at -30]
 
 - `<input_name>`    [switch to given input]
 - `mode`            [cycle through stereo and surround audio modes]

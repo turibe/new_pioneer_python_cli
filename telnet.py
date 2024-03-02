@@ -427,13 +427,15 @@ def write_loop(tn: telnetlib.Telnet) -> None:
         intval = int(command) if command.split("-", 1)[-1].isdecimal() else None
         if intval:
             if intval > 0:
-                intval = max(intval, 5)
-                for x in range(1,intval,1):
+                intval = min(intval, 10)
+                print(f"Volume up {intval}")
+                for x in range(1, intval+1):
                     send(tn, "VU")
                     time.sleep(0.1)
             if intval < 0:
                 intval = abs(max(intval, -30))
-                for x in range(0,intval,1):
+                print(f"Volume down {intval}")
+                for x in range(0, intval):
                     send(tn, "VD")
                     time.sleep(0.1)
             continue

@@ -16,10 +16,7 @@ from typing import Optional
 from modes_display import modeDisplayMap
 from modes_set import modeSetMap, inverseModeSetMap
 
-
-
 # HOST = "192.168.86.32"
-
 
 inputMap = {
     "41" : "Pandora",
@@ -123,25 +120,39 @@ commandMap = {
     "prevpreset" : "TPD",
     "mpx" : "05TN",
 
+    # Cyclic mode shortcuts:
+    # cycles through thx modes, but input must be THX:
+    "thx" : "0050SR",
+    # cycles through surround modes (shortcut for "mode" command):
+    "surr" : "0100SR"
+
 }
 
 
 def print_help():
+    "Prints help for the main commands"
     l = commandMap.keys()
     # l.sort()
     for x in l:
         print(x)
-    print("mode [mode]")
-    print(inverseModeSetMap.keys())
+    print("""Use "help mode" for information on modes\n""")
+
+def print_mode_help():
+    "Lists the mode change options (not all work)"
+    print("mode [mode]\tfor one of:\n")
+    for i in inverseModeSetMap:
+        print(f"{i}")
 
 def send(tn, s:str):
+    "Sends the given string as bytes"
     tn.write(s.encode() + b"\r\n")
 
 def readline(tn) -> bytes:
+    "Reads a line from the connection"
     s = tn.read_until(b"\r\n")
     return s[:-2]
 
-def decodeFL(s:str) -> Optional[str]:
+def decode_fl(s:str) -> Optional[str]:
     # print("Original Url string is:", s)
     if not s.startswith('FL'):
         return None
@@ -168,9 +179,28 @@ ErrorMap = {
 def parse_error(s:str):
     return ErrorMap.get(s, None)
 
-def decodeAST(s:str) -> bool:
-    if not s.startswith('AST'):
-        return False
+VTC_resolution_map = {
+    "00": "AUTO Resolution",
+    "01": "PURE Resolution",
+    "02": "Reserved Resolution",
+    "03": "R480/576 Resolution",
+    "04": "720p Resolution",
+    "05": "1080i Resolution",
+    "06": "1080p Resolution",
+    "07": "1080/24p Resolution"
+    }
+
+def decode_vtc(s: str) -> bool:
+    "Decodes a VTC (video resolution) status status string"
+    assert s.startswith('VTC')
+    s = s[3:]
+    print(VTC_resolution_map.get(s, "unknown VTC resolution"))
+    sys.stdout.flush()
+    return True
+
+def decode_ast(s:str) -> bool:
+    "Decodes an AST return status string"
+    assert s.startswith('AST')
     s = s[3:]
     print("Audio input signal:" + decode_ais( s[0:2] ))
     print("Audio input frequency:" + decode_aif( s[2:4] ))
@@ -178,10 +208,14 @@ def decodeAST(s:str) -> bool:
     s = '-' + s
     # channels...
     print("Input Channels:")
-    if int(s[5]): print("Left, ")
-    if int(s[6]): print("Center, ")
-    if int(s[7]): print("Right, ")
-    if int(s[8]): print("SL, ")
+    if int(s[5]):
+        print("Left, ")
+    if int(s[6]):
+        print("Center, ")
+    if int(s[7]):
+        print("Right, ")
+    if int(s[8]):
+        print("SL, ")
     if int(s[9]): print("SR, ")
     if int(s[10]): print("SBL, ")
     if int(s[11]): print("S, ")
@@ -213,52 +247,71 @@ def decodeAST(s:str) -> bool:
     sys.stdout.flush()
     return True
 
-# def decode_vst(s:str) -> bool:
-#     if not s.startswith("VST"):
-#         return False
-#     s = s[3:]
-#     s = '=' + s
-#     return True
+
+aif_map = {
+    "00": "32kHz",
+    "01": "44.1kHz",
+    "02": "48kHz",
+    "03": "88.2kHz",
+    "04": "96kHz",
+    "05": "176.4kHz",
+    "06":  "192kHz",
+    "07": "---"
+}
+
 
 def decode_aif(s:str) -> str:
-    if s=="00": return "32kHz"
-    if s=="01": return "44.1kHz"
-    if s=="02": return "48kHz"
-    if s=="03": return "88.2kHz"
-    if s=="04": return "96kHz"
-    if s=="05": return "176.4kHz"
-    if s=="06": return "192kHz"
-    if s=="07": return "---"
-    return "unknown"
+    return aif_map.get(s, "unknown")
 
 def decode_ais(s:str) -> str:
-    if "00" <= s <= "02": return "ANALOG"
-    if s=="03" or s=="04": return "PCM"
-    if s=="05": return "DOLBY DIGITAL"
-    if s=="06": return "DTS"
-    if s=="07": return "DTS-ES Matrix"
-    if s=="08": return "DTS-ES Discrete"
-    if s=="09": return "DTS 96/24"
-    if s=="10": return "DTS 96/24 ES Matrix"
-    if s=="11": return "DTS 96/24 ES Discrete"
-    if s=="12": return "MPEG-2 AAC"
-    if s=="13": return "WMA9 Pro"
-    if s=="14": return "DSD->PCM"
-    if s=="15": return "HDMI THROUGH"
-    if s=="16": return "DOLBY DIGITAL PLUS"
-    if s=="17": return "DOLBY TrueHD"
-    if s=="18": return "DTS EXPRESS"
-    if s=="19": return "DTS-HD Master Audio"
-    if "20" <= s <= "26": return "DTS-HD High Resolution"
-    if s=="27": return "DTS-HD Master Audio"
+    if "00" <= s <= "02":
+        return "ANALOG"
+    if s=="03" or s=="04":
+        return "PCM"
+    if s=="05":
+        return "DOLBY DIGITAL"
+    if s=="06":
+        return "DTS"
+    if s=="07":
+        return "DTS-ES Matrix"
+    if s=="08":
+        return "DTS-ES Discrete"
+    if s=="09":
+        return "DTS 96/24"
+    if s=="10":
+        return "DTS 96/24 ES Matrix"
+    if s=="11":
+        return "DTS 96/24 ES Discrete"
+    if s=="12":
+        return "MPEG-2 AAC"
+    if s=="13":
+        return "WMA9 Pro"
+    if s=="14":
+        return "DSD->PCM"
+    if s=="15":
+        return "HDMI THROUGH"
+    if s=="16":
+        return "DOLBY DIGITAL PLUS"
+    if s=="17":
+        return "DOLBY TrueHD"
+    if s=="18":
+        return "DTS EXPRESS"
+    if s=="19":
+        return "DTS-HD Master Audio"
+    if "20" <= s <= "26":
+        return "DTS-HD High Resolution"
+    if s=="27":
+        return "DTS-HD Master Audio"
     return "unknown"
 
-def db_level(s) -> str:
+def db_level(s:str) -> str:
+    "db level conversion"
     n = int(s)
     db = 6 - n
     return f"{db}dB"
 
 def decode_tone(s: str) -> Optional[str]:
+    "readable version of the tone status"
     if s.startswith("TR"):
         return "treble at " + db_level(s[2:4])
     if s.startswith("BA"):
@@ -306,10 +359,10 @@ screenTypeMap = {
 }
 
 
-def decodeGeh(s: str) -> Optional[str]:
+def decode_geh(s: str) -> Optional[str]:
     if s.startswith("GDH"):
-        bytes = s[3:]
-        return "items " + bytes[0:5] + " to " + bytes[5:10] + " of total " + bytes[10:]
+        sbytes = s[3:]
+        return "items " + sbytes[0:5] + " to " + sbytes[5:10] + " of total " + sbytes[10:]
     if s.startswith("GBH"):
         return "max list number: " + s[2:]
     if s.startswith("GCH"):
@@ -346,12 +399,12 @@ def read_loop(tn: telnetlib.Telnet) -> None:
         if tone:
             print(tone)
             continue
-        geh = decodeGeh(s)
+        geh = decode_geh(s)
         if geh:
             print(geh)
             continue
         # print("s has type", type(s)) # bytes
-        fl = decodeFL(s)
+        fl = decode_fl(s)
         if fl:
             sys.stdout.write(f"{fl}\r")
             continue
@@ -389,7 +442,9 @@ def read_loop(tn: telnetlib.Telnet) -> None:
         if m:
             print(f"Listening mode is {m} ({s})")
             continue
-        if s.startswith('AST') and decodeAST(s):
+        if s.startswith('AST') and decode_ast(s):
+            continue
+        if s.startswith('VTC') and decode_vtc(s):
             continue
         if s.startswith('SR'):
             code = s[2:]
@@ -406,6 +461,10 @@ def write_loop(tn: telnetlib.Telnet) -> None:
     s: Optional[str] = None
     while True:
         command = input("command: ").strip()
+        split_command = command.split()
+        base_command = split_command[0] if len(split_command) > 0 else None
+        second_arg = split_command[1] if len(split_command) > 1 else None
+        # print(f"base command: {base_command}\n")
         if command in ("quit", "exit"):
             print("Read thread says bye-bye!")
             # sys.exit()
@@ -413,29 +472,34 @@ def write_loop(tn: telnetlib.Telnet) -> None:
         if command == "status":
             get_status(tn)
             continue
-        if command in ("help", "?"):
-            print_help()
-            continue
-        if command.startswith("select"):
-            s = second_arg(command).rjust(2,"0") + "GFI"
+        if base_command in ("help", "?"):
+            if command in ("help", "?"):
+                print_help()
+                continue
+            if len(split_command) > 1 and split_command[1] == "mode":
+                print_mode_help()
+                continue
+        if base_command == "select" and second_arg:
+            s = second_arg.rjust(2,"0") + "GFI"
             send(tn, s)
             continue
-        if command.startswith("display"):
-            s = second_arg(command).rjust(5, "0") + "GCI" # may need to pad with zeros.
+        if base_command == "display" and second_arg:
+            s = second_arg.rjust(5, "0") + "GCI" # may need to pad with zeros.
             send(tn, s)
             continue
+        # check if command is just a positive or negative integer:
         intval = int(command) if command.split("-", 1)[-1].isdecimal() else None
         if intval:
             if intval > 0:
                 intval = min(intval, 10)
                 print(f"Volume up {intval}")
-                for x in range(1, intval+1):
+                for _x in range(1, intval+1):
                     send(tn, "VU")
                     time.sleep(0.1)
             if intval < 0:
                 intval = abs(max(intval, -30))
                 print(f"Volume down {intval}")
-                for x in range(0, intval):
+                for _x in range(0, intval):
                     send(tn, "VD")
                     time.sleep(0.1)
             continue
@@ -443,28 +507,47 @@ def write_loop(tn: telnetlib.Telnet) -> None:
         if s:
             send(tn, s)
             continue
-        if command.startswith("mode"):
-            change_mode(tn, command)
+        if base_command == "mode":
+            change_mode(tn, split_command)
             continue
         if command != "":
             print("Sending raw command " + command)
             sys.stdout.flush()
-            send(tn, command) # try original one
+            send(tn, command) # try raw command
 
 
-# TODO: some modes work and some don't
+# TODO: some modes work and some don't;
 # document which ones, only include those in help
 
-def change_mode(tn, command:str) -> bool:
-    l = command.split(" ")
+def get_mode(modestring:str) -> set[str]:
+    s:set[str] = set({})
+    for i in inverseModeSetMap:
+        if i.startswith(modestring):
+            s.add(i)
+    return s
+
+def change_mode(tn, l: list[str]) -> bool:
+    "Attempts to change the mode given the (split) command l"
     if len(l) < 2:
         return False
     modestring = " ".join(l[1:]).lower()
-    m = inverseModeSetMap.get(modestring, None)
-    if m:
+    if modestring == "help":
+        print_mode_help()
+        return False
+    mset = get_mode(modestring)
+    if len(mset) == 0:
+        print(f"Unknown mode {modestring}") # "Unknown mode <mode>" message
+        return False
+    if len(mset) == 1:
+        mode = mset.pop()
+        m = inverseModeSetMap.get(mode)
+        assert m is not None
+        print(f"trying to change mode to {modestring} ({m})")
         send(tn, m + "SR")
         return False
-    print("Unknown " + command) # "Unknown mode <mode>" message
+    print("Which one do you mean? Options are:")
+    for i in mset:
+        print(i)
     return False
 
 def second_arg(cmd: str) -> str:
@@ -494,6 +577,7 @@ def get_status(tn):
     send(tn, "?TO")
     send(tn, "?L")
     send(tn, "?AST")
+    # send(tn, "?VTC") # not very interesting if always AUTO
 
 
 class ReadThread(threading.Thread):

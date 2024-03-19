@@ -23,7 +23,11 @@ Disclaimer: *Use at your own risk.*
 - `-<integer>`      [if negative, decrease volume this number of times, capped at -30]
 
 - `<input_name>`    [switch to given input]
-- `mode`            [cycle through stereo and surround audio modes]
+
+- `mode X`          [choose audio modes; not all modes will be available]
+- `mode help`       [help with modes]
+- `surr`            [cycle through surround modes]
+- `stereo`          [stereo mode]
 - `status`          [print status]
 
 - Use control-D to exit.

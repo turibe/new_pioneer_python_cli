@@ -10,6 +10,11 @@ License: MIT.
 
 Disclaimer: *Use at your own risk.*
 
+For a more complete API, see (https://github.com/crowbarz/aiopioneer).
+
+Python 3 will soon deprecate the telnet module; will switch to using async io.
+See also [a new Rust implementation of the same functionality here](https://github.com/turibe/pioneer_rust_cli).
+
 ## Usage:
 
 1. Find out your AVR's IP address.

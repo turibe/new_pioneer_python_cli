@@ -6,7 +6,7 @@ Main script for controlling the AVR via telnet.
 
 import sys
 import telnetlib
-import urllib.parse
+
 import threading
 import argparse
 import time
@@ -16,25 +16,12 @@ from typing import Optional
 from modes_display import modeDisplayMap
 from modes_set import modeSetMap, inverseModeSetMap
 
+import sources
+from decoders import *
+
 # HOST = "192.168.86.32"
 
-inputMap = {
-    "41" : "Pandora",
-    "44" : "Media Server",
-    "45" : "Favorites",
-    "17" : "iPod/USB",
-    "05" : "DVR",
-    "01" : "TV",
-    "13" : "USB-DAC",
-    "02" : "TUNER",
-    "00" : "PHONO",
-    "12" : "MULTI CH IN",
-    "33" : "ADAPTER PORT",
-    "48" : "MHL",
-    "31" : "HDMI" # cyclic
-}
-
-# a:str = inputMap.get("foo", None)
+DEBUG = False
 
 commandMap = {
     "on" : "PO",
@@ -69,34 +56,15 @@ commandMap = {
     "extended" : "0112SR",
 
     "mode" : "?S",
+    "model" : "?RGD",
+    "mac address" : "?SVB",
+    "software version" : "?SSI",
 
     "loud" : "9ATW", # cyclic
 
-    # switch inputs:
-    "bd" : "25FN",
-    "dvd" : "04FN",
-    "appleaudio" : "05FN",
-    "amazontv" : "06FN",
-    # "sat" : "06FN",
-    "video" : "10FN",
-    "hdmi1" : "19FN",
-    "hdmi2" : "20FN",
-    "hdmi3" : "21FN",
-    "hdmi4" : "22FN",
-    "hdmi5" : "23FN",
-    "hdmi6" : "24FN",
-    "apple" : "25FN",
-    "appletv" : "25FN",
-    "hdmi7" : "34FN",
-    "net" : "26FN", # cyclic
-    "tv" : "01FN",
-    "iradio" : "38FN",
-    "dvr" : "15FN",
-    "radio" : "02FN",
-    "tuner" : "02FN",
-    "phono" : "00FN", # invalid command
-    "hdmi" : "31FN", # cyclic
-    "pandora" : "41FN",
+    # commands for switching inputs have the form XXFN, now derived from inputSourcesMap.
+    # "phono" : "00FN", # invalid command
+    # "hdmi" : "31FN", # cyclic
 
     # TODO: could have a pandora mode, radio mode, etc.
     # Pandora ones:
@@ -125,9 +93,7 @@ commandMap = {
     "thx" : "0050SR",
     # cycles through surround modes (shortcut for "mode" command):
     "surr" : "0100SR"
-
 }
-
 
 def print_help():
     "Prints help for the main commands"
@@ -135,13 +101,20 @@ def print_help():
     # l.sort()
     for x in l:
         print(x)
-    print("""Use "help mode" for information on modes\n""")
+    print("""Use "help mode" for information on modes, "help sources" for changing input sources, "quit" to exit\n""")
 
 def print_mode_help():
     "Lists the mode change options (not all work)"
     print("mode [mode]\tfor one of:\n")
     for i in inverseModeSetMap:
         print(f"{i}")
+
+def print_input_source_help():
+    "Lists the input source change commands"
+    print("Enter one of the following to change input:")
+    for (i,inv) in sorted(SOURCE_MAP.inverse_map.items()):
+        print(f"{i} ({inv})")
+    print("Use 'learn' to update this map, 'save' to save it.")
 
 def send(tn, s:str):
     "Sends the given string as bytes"
@@ -152,21 +125,6 @@ def readline(tn) -> bytes:
     s = tn.read_until(b"\r\n")
     return s[:-2]
 
-def decode_fl(s:str) -> Optional[str]:
-    # print("Original Url string is:", s)
-    if not s.startswith('FL'):
-        return None
-    s = s[2:] #  the FL
-    s = s[2:] # skip first two
-    i = 0
-    url = ""
-    while i < len(s):
-        url += "%"
-        url += s[i:i+2]
-        i += 2
-    result = urllib.parse.unquote(url)
-    # print("Url is", url, "result is", result)
-    return result
 
 ErrorMap = {
     "E02" : "NOT AVAILABLE NOW",
@@ -179,221 +137,27 @@ ErrorMap = {
 def parse_error(s:str):
     return ErrorMap.get(s, None)
 
-VTC_resolution_map = {
-    "00": "AUTO Resolution",
-    "01": "PURE Resolution",
-    "02": "Reserved Resolution",
-    "03": "R480/576 Resolution",
-    "04": "720p Resolution",
-    "05": "1080i Resolution",
-    "06": "1080p Resolution",
-    "07": "1080/24p Resolution"
-    }
 
-def decode_vtc(s: str) -> bool:
-    "Decodes a VTC (video resolution) status status string"
-    assert s.startswith('VTC')
-    s = s[3:]
-    print(VTC_resolution_map.get(s, "unknown VTC resolution"))
-    sys.stdout.flush()
-    return True
-
-def decode_ast(s:str) -> bool:
-    "Decodes an AST return status string"
-    assert s.startswith('AST')
-    s = s[3:]
-    print("Audio input signal:" + decode_ais( s[0:2] ))
-    print("Audio input frequency:" + decode_aif( s[2:4] ))
-    # The manual starts counting at 1, so to fix this off-by-one, we do:
-    s = '-' + s
-    # channels...
-    print("Input Channels:")
-    if int(s[5]):
-        print("Left, ")
-    if int(s[6]):
-        print("Center, ")
-    if int(s[7]):
-        print("Right, ")
-    if int(s[8]):
-        print("SL, ")
-    if int(s[9]): print("SR, ")
-    if int(s[10]): print("SBL, ")
-    if int(s[11]): print("S, ")
-    if int(s[12]): print("SBR, ")
-    if int(s[13]): print("LFE, ")
-    if int(s[14]): print("FHL, ")
-    if int(s[15]): print("FHR, ")
-    if int(s[16]): print("FWL, ")
-    if int(s[17]): print("FWR, ")
-    if int(s[18]): print("XL, ")
-    if int(s[19]): print("XC, ")
-    if int(s[20]): print("XR, ")
-    print("")
-    print("Output Channels:")
-    if int(s[26]): print("Left, ")
-    if int(s[27]): print("Center, ")
-    if int(s[28]): print("Right, ")
-    if int(s[29]): print("SL, ")
-    if int(s[30]): print("SR, ")
-    if int(s[31]): print("SBL, ")
-    if int(s[32]): print("S, ")
-    if int(s[33]): print("SBR, ")
-    if int(s[34]): print("LFE, ")
-    if int(s[35]): print("FHL, ")
-    if int(s[36]): print("FHR, ")
-    if int(s[37]): print("FWL, ")
-    if int(s[38]): print("FWR, ")
-    print("")
-    sys.stdout.flush()
-    return True
-
-
-aif_map = {
-    "00": "32kHz",
-    "01": "44.1kHz",
-    "02": "48kHz",
-    "03": "88.2kHz",
-    "04": "96kHz",
-    "05": "176.4kHz",
-    "06":  "192kHz",
-    "07": "---"
-}
-
-
-def decode_aif(s:str) -> str:
-    return aif_map.get(s, "unknown")
-
-def decode_ais(s:str) -> str:
-    if "00" <= s <= "02":
-        return "ANALOG"
-    if s=="03" or s=="04":
-        return "PCM"
-    if s=="05":
-        return "DOLBY DIGITAL"
-    if s=="06":
-        return "DTS"
-    if s=="07":
-        return "DTS-ES Matrix"
-    if s=="08":
-        return "DTS-ES Discrete"
-    if s=="09":
-        return "DTS 96/24"
-    if s=="10":
-        return "DTS 96/24 ES Matrix"
-    if s=="11":
-        return "DTS 96/24 ES Discrete"
-    if s=="12":
-        return "MPEG-2 AAC"
-    if s=="13":
-        return "WMA9 Pro"
-    if s=="14":
-        return "DSD->PCM"
-    if s=="15":
-        return "HDMI THROUGH"
-    if s=="16":
-        return "DOLBY DIGITAL PLUS"
-    if s=="17":
-        return "DOLBY TrueHD"
-    if s=="18":
-        return "DTS EXPRESS"
-    if s=="19":
-        return "DTS-HD Master Audio"
-    if "20" <= s <= "26":
-        return "DTS-HD High Resolution"
-    if s=="27":
-        return "DTS-HD Master Audio"
-    return "unknown"
-
-def db_level(s:str) -> str:
-    "db level conversion"
-    n = int(s)
-    db = 6 - n
-    return f"{db}dB"
-
-def decode_tone(s: str) -> Optional[str]:
-    "readable version of the tone status"
-    if s.startswith("TR"):
-        return "treble at " + db_level(s[2:4])
-    if s.startswith("BA"):
-        return "bass at " + db_level(s[2:4])
-    if s == "TO0":
-        return "tone off"
-    if s == "TO1":
-        return "tone on"
-    return None
-
-sourceMap = {
-    "00" : "Intenet Radio",
-    "01" : "Media Server",
-    "06" : "SiriusXM",
-    "07" : "Pandora",
-    "10" : "AirPlay",
-    "11" : "Digital Media Renderer (DMR)"
-}
-
-typeMap = {
-    "20" : "Track",
-    "21" : "Artist",
-    "22" : "Album",
-    "23" : "Time",
-    "24" : "Genre",
-    "25" : "Chapter Number",
-    "26" : "Format",
-    "27" : "Bitrate",
-    "28" : "Category",
-    "29" : "Composer1",
-    "30" : "Composer2",
-    "31" : "Buffer",
-    "32" : "Channel"
-}
-
-screenTypeMap = {
-    "00" : "Message",
-    "01" : "List",
-    "02" : "Playing (Play)",
-    "03" : "Playing (Pause)",
-    "04" : "Playing (Fwd)",
-    "05" : "Playing (Rev)",
-    "06" : "Playing (Stop)",
-    "99" : "Invalid"
-}
-
-
-def decode_geh(s: str) -> Optional[str]:
-    if s.startswith("GDH"):
-        sbytes = s[3:]
-        return "items " + sbytes[0:5] + " to " + sbytes[5:10] + " of total " + sbytes[10:]
-    if s.startswith("GBH"):
-        return "max list number: " + s[2:]
-    if s.startswith("GCH"):
-        return screenTypeMap.get(s[3:5], "unknown")  + " - " + s
-    if s.startswith('GHH'):
-        source = s[2:]
-        return "source: " + sourceMap.get(source, "unknown")
-    if not s.startswith('GEH'):
-        return None
-    s = s[3:]
-    # line = s[0:2]
-    # focus = s[2]
-    tstring = s[3:5]
-    typeval = typeMap.get(tstring, f"unknown ({tstring})")
-    info = s[5:]
-    return typeval + ": " + info
-
+SOURCE_MAP = sources.SourceMap()
+SOURCE_MAP.read_from_file()
 
 # We really want two threads: one with the output, another with the commands.
 
 def read_loop(tn: telnetlib.Telnet) -> None:
-    """Main read loop"""
+    """Main loop that reads and decodes data that comes back from the AVR"""
     sys.stdout.flush()
     count:int = 0
     while True:
         count += 1
         b:bytes = readline(tn)
-        s = b.decode()
+        s = b.decode().strip()
         err = parse_error(s)
         if err:
-            print(count, "ERROR: ", err)
+            print(f"ERROR: {err}")
+            continue
+        if s.startswith("RGB"):
+            # print(f"Learning (maybe) from '{s[3:]}'") # only if new
+            SOURCE_MAP.learn_input_from(s[3:])
             continue
         tone = decode_tone(s)
         if tone:
@@ -406,23 +170,40 @@ def read_loop(tn: telnetlib.Telnet) -> None:
         # print("s has type", type(s)) # bytes
         fl = decode_fl(s)
         if fl:
-            sys.stdout.write(f"{fl}\r")
+            sys.stdout.write(f"{fl}\r\n")
+            continue
+        if s.startswith('IS'):
+            if s[2] == '0':
+                print("Phase control OFF")
+            elif s[2] == '1':
+                print("Phase control ON")
+            elif s[2] == '2':
+                print("Full band phase control on")
+            else:
+                print("Phase control: unknown")
+            continue
+        if s == "PWR0":
+            print(f"Power is ON")
+            continue
+        if s == "PWR1":
+            print(f"Power is OFF")
             continue
         if s.startswith('FN'):
-            inputs = inputMap.get(s[2:], f"unknown ({s})")
+            print(f"Got input {s}\n")
+            inputs = SOURCE_MAP.get(s[2:], f"unknown ({s})")
             print(f"Input is {inputs}")
             continue
         if s.startswith('ATW'):
-            print("loudness is ")
-            print("on" if s == "ATW1" else "off")
+            flag = "on" if s == "ATW1" else "off"
+            print(f"loudness is {flag}"),
             continue
         if s.startswith('ATC'):
-            print("eq is ")
-            print("on" if s == "ATC1" else "off")
+            fl = "on" if s == "ATC1" else "off"
+            print(f"eq is {fl}")
             continue
         if s.startswith('ATD'):
-            print("standing wave is ")
-            print("on" if s == "ATD1" else "off")
+            fl = "on" if s == "ATD1" else "off"
+            print(f"standing wave is {fl}")
             continue
         if s.startswith('ATE'):
             num = s[3:]
@@ -452,12 +233,19 @@ def read_loop(tn: telnetlib.Telnet) -> None:
             if v:
                 print(f"mode is {v} ({s})")
                 continue
+        vst = decode_vst(s)
+        if vst:
+            print(vst)
+            continue
+        # if s.startswith('VOL'):
+        #    continue
         # default:
-        print(count, s)
+        if len(s) > 0:
+            print(f"Unknown status line {s}")
 
 
 def write_loop(tn: telnetlib.Telnet) -> None:
-    """Main write loop"""
+    """Main loop that reads user input and sends commands to the AVR"""
     s: Optional[str] = None
     while True:
         command = input("command: ").strip()
@@ -469,16 +257,44 @@ def write_loop(tn: telnetlib.Telnet) -> None:
             print("Read thread says bye-bye!")
             # sys.exit()
             return
+        if command == "debug":
+            global DEBUG
+            DEBUG = not DEBUG
+            print(f"Debug is now {DEBUG}")
+            continue
         if command == "status":
             get_status(tn)
+            continue
+        if command == "video status":
+            send(tn, "?VST")
+            continue
+        if command == "model":
+            send(tn, "?RGD")
+            continue
+        if command == "learn":
+            # query the range of source codes to get their names back (if any):
+            for i in range(0,60):
+               s = str(i).rjust(2,"0")
+               send(tn, f"?RGB{s}")
+            continue
+        if command == "save":
+            SOURCE_MAP.save_to_file()
+            continue
+        if command == "sources" or command == "inputs":
+            print_input_source_help()
             continue
         if base_command in ("help", "?"):
             if command in ("help", "?"):
                 print_help()
                 continue
-            if len(split_command) > 1 and split_command[1] == "mode":
+            if len(split_command) > 1 and split_command[1] in ["mode", "modes"]:
                 print_mode_help()
                 continue
+            if len(split_command) > 1 and ("inputs".startswith(split_command[1]) or "sources".startswith(split_command[1])):
+                print_input_source_help()
+                continue
+            print(f"""Couldn't recognize help command "{command}" """)
+            continue
         if base_command == "select" and second_arg:
             s = second_arg.rjust(2,"0") + "GFI"
             send(tn, s)
@@ -493,7 +309,7 @@ def write_loop(tn: telnetlib.Telnet) -> None:
             if intval > 0:
                 intval = min(intval, 10)
                 print(f"Volume up {intval}")
-                for _x in range(1, intval+1):
+                for _x in range(0, intval):
                     send(tn, "VU")
                     time.sleep(0.1)
             if intval < 0:
@@ -503,7 +319,7 @@ def write_loop(tn: telnetlib.Telnet) -> None:
                     send(tn, "VD")
                     time.sleep(0.1)
             continue
-        s = commandMap.get(command, None)
+        s = commandMap.get(command, None) or SOURCE_MAP.inverse_map.get(command, None) # changing to a source by using the source name as the command
         if s:
             send(tn, s)
             continue
@@ -511,7 +327,7 @@ def write_loop(tn: telnetlib.Telnet) -> None:
             change_mode(tn, split_command)
             continue
         if command != "":
-            print("Sending raw command " + command)
+            print(f"Sending raw command {command}")
             sys.stdout.flush()
             send(tn, command) # try raw command
 
@@ -519,13 +335,14 @@ def write_loop(tn: telnetlib.Telnet) -> None:
 # TODO: some modes work and some don't;
 # document which ones, only include those in help
 
-def get_mode(modestring:str) -> set[str]:
+def get_modes_with_prefix(prefix:str) -> set[str]:
     s:set[str] = set({})
     for i in inverseModeSetMap:
-        if i.startswith(modestring):
+        if i.startswith(prefix):
             s.add(i)
     return s
 
+# return value not used:
 def change_mode(tn, l: list[str]) -> bool:
     "Attempts to change the mode given the (split) command l"
     if len(l) < 2:
@@ -534,7 +351,7 @@ def change_mode(tn, l: list[str]) -> bool:
     if modestring == "help":
         print_mode_help()
         return False
-    mset = get_mode(modestring)
+    mset = get_modes_with_prefix(modestring)
     if len(mset) == 0:
         print(f"Unknown mode {modestring}") # "Unknown mode <mode>" message
         return False
@@ -565,18 +382,21 @@ def translate_mode(s: str) -> Optional[str]:
     if not s.startswith('LM'):
         return None
     s = s[2:]
-    m = modeDisplayMap.get(s, None)
-    return m or "Unknown"
+    return modeDisplayMap.get(s, "Unknown")
 
 
-def get_status(tn):
+def get_status(tn: telnetlib.Telnet):
     """Gets the status by sending a series of status requests.
        Each request prints the corresponding info."""
+    send(tn, "?P") # power
+    send(tn, "?F") # input
     send(tn, "?BA")
     send(tn, "?TR")
     send(tn, "?TO")
     send(tn, "?L")
     send(tn, "?AST")
+    send(tn, "?IS")
+    send(tn, "?VST")
     # send(tn, "?VTC") # not very interesting if always AUTO
 
 

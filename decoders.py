@@ -1,11 +1,7 @@
 
-import codecs
-
 from typing import Optional
 
 # TODO: add unit tests
-
-decode_hex = codecs.getdecoder("hex_codec")
 
 def decode_fl(s:str) -> Optional[str]:
     # print("Original Url string is:", s)
@@ -13,7 +9,7 @@ def decode_fl(s:str) -> Optional[str]:
         return None
     s = s[2:] # the FL
     s = s[2:] # skip first two
-    result = decode_hex(s)[0]
+    result = bytes.fromhex(s).decode('ascii')
     # print("original is", s, "result is", result)
     return result
 

@@ -50,8 +50,7 @@ commandMap = {
     # phase control is recommended to be on:
     "phase" : "IS9", # cyclic
 
-    # cycle through stereo modes:
-    "stereo" : "0001SR",
+    "stereo" : "0001SR", # cycle through stereo modes
     "unplugged" : "0109SR",
     "extended" : "0112SR",
 
@@ -159,17 +158,14 @@ def read_loop(tn: telnetlib.Telnet) -> None:
             # print(f"Learning (maybe) from '{s[3:]}'") # only if new
             SOURCE_MAP.learn_input_from(s[3:])
             continue
-        tone = decode_tone(s)
-        if tone:
+        if tone := decode_tone(s):
             print(tone)
             continue
-        geh = decode_geh(s)
-        if geh:
+        if geh := decode_geh(s):
             print(geh)
             continue
         # print("s has type", type(s)) # bytes
-        fl = decode_fl(s)
-        if fl:
+        if fl := decode_fl(s):
             sys.stdout.write(f"{fl}\r\n")
             continue
         if s.startswith('IS'):
@@ -219,8 +215,7 @@ def read_loop(tn: telnetlib.Telnet) -> None:
                 else:
                     print("Phase control: unknown")
             continue
-        m = translate_mode(s)
-        if m:
+        if m := translate_mode(s):
             print(f"Listening mode is {m} ({s})")
             continue
         if s.startswith('AST') and decode_ast(s):
@@ -233,12 +228,11 @@ def read_loop(tn: telnetlib.Telnet) -> None:
             if v:
                 print(f"mode is {v} ({s})")
                 continue
-        vst = decode_vst(s)
-        if vst:
+        if vst := decode_vst(s):
             print(vst)
             continue
-        # if s.startswith('VOL'):
-        #    continue
+        if s.startswith('VOL'):
+            continue
         # default:
         if len(s) > 0:
             print(f"Unknown status line {s}")
@@ -420,7 +414,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     print(f"AVR hostname/address is {args.host}")
 
-    telnet_connection = telnetlib.Telnet(args.host)
+    telnet_connection = telnetlib.Telnet(args.host, port=23)
     # telnet_connection.set_debuglevel(100)
     # time.sleep(0.5)
 

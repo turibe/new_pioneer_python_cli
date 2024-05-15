@@ -1,10 +1,7 @@
 
-import urllib.parse
-
 from typing import Optional
 
 # TODO: add unit tests
-
 
 def decode_fl(s:str) -> Optional[str]:
     # print("Original Url string is:", s)
@@ -12,14 +9,8 @@ def decode_fl(s:str) -> Optional[str]:
         return None
     s = s[2:] # the FL
     s = s[2:] # skip first two
-    i = 0
-    url = ""
-    while i < len(s):
-        url += "%"
-        url += s[i:i+2]
-        i += 2
-    result = urllib.parse.unquote(url)
-    # print("Url is", url, "result is", result)
+    result = bytes.fromhex(s).decode('ascii')
+    # print("original is", s, "result is", result)
     return result
 
 
@@ -300,7 +291,7 @@ def decode_vst(s: str) -> Optional[str]:
     ibit = FORMAT_BIT_MAP.get(s[6], "Unknown")
     result += f"Input bit (HDMI only): {ibit}\n"
     cspace = COLOR_SPACE_MAP.get(s[7], "Unknown")
-    result += f"Input extend color space (HDMI only): {ibit}\n"
+    result += f"Input extend color space (HDMI only): {cspace}\n"
     oformat = SIGNAL_FORMAT_MAP.get(s[8:10], "Unknown")
     result += f"Output resolution: {oformat}\n"
     oaspect = ASPECT_MAP.get(s[10], "Unknown")
@@ -323,9 +314,4 @@ def decode_vta(s: str) -> Optional[str]:
     if not s.startswith('VTA'):
         return None
     return None
-    
-    
 
-
-
-    

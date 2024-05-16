@@ -91,7 +91,9 @@ commandMap = {
     # cycles through thx modes, but input must be THX:
     "thx" : "0050SR",
     # cycles through surround modes (shortcut for "mode" command):
-    "surr" : "0100SR"
+    "surr" : "0100SR",
+
+    "video status" : "?VST"
 }
 
 def print_help():
@@ -259,12 +261,6 @@ def write_loop(tn: telnetlib.Telnet) -> None:
         if command == "status":
             get_status(tn)
             continue
-        if command == "video status":
-            send(tn, "?VST")
-            continue
-        if command == "model":
-            send(tn, "?RGD")
-            continue
         if command == "learn":
             # query the range of source codes to get their names back (if any):
             for i in range(0,60):
@@ -276,6 +272,9 @@ def write_loop(tn: telnetlib.Telnet) -> None:
             continue
         if command == "sources" or command == "inputs":
             print_input_source_help()
+            continue
+        if command == "modes":
+            print_mode_help()
             continue
         if base_command in ("help", "?"):
             if command in ("help", "?"):
@@ -289,10 +288,12 @@ def write_loop(tn: telnetlib.Telnet) -> None:
                 continue
             print(f"""Couldn't recognize help command "{command}" """)
             continue
+        # to select from a menu:
         if base_command == "select" and second_arg:
             s = second_arg.rjust(2,"0") + "GFI"
             send(tn, s)
             continue
+        # to display from a menu:
         if base_command == "display" and second_arg:
             s = second_arg.rjust(5, "0") + "GCI" # may need to pad with zeros.
             send(tn, s)

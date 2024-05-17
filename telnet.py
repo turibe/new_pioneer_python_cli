@@ -341,6 +341,8 @@ def write_loop(tn: telnetlib.Telnet) -> None:
 # document which ones, only include those in help
 
 def get_modes_with_prefix(prefix:str) -> set[str]:
+    if inverseModeSetMap.get(prefix, None) is not None:
+        return [prefix]
     s:set[str] = set({})
     for i in inverseModeSetMap:
         if i.startswith(prefix):

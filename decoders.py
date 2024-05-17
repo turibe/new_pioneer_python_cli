@@ -1,6 +1,9 @@
 
 from typing import Optional
 
+import config
+report = config.report
+
 # TODO: add unit tests
 
 def decode_fl(s:str) -> Optional[str]:
@@ -277,7 +280,9 @@ COLOR_SPACE_MAP = {
 def decode_vst(s: str) -> Optional[str]:
     if not s.startswith('VST'):
         return None
-    print(f"Decoding {s}\n")
+    print(f"Debug is {config.DEBUG}")
+    if config.DEBUG:
+        report(f"Decoding {s}\n")
     result = ""
     s = "-" + s[3:] # for off-by-one
     signal = SIGNAL_MAP.get(s[1], "Unknown")

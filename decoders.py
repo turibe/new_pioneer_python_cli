@@ -278,6 +278,7 @@ COLOR_SPACE_MAP = {
     }
 
 def decode_vst(s: str) -> Optional[str]:
+    """Decodes a VSTXXXXX string from the AVR"""
     if not s.startswith('VST'):
         return None
     print(f"Debug is {config.DEBUG}")
@@ -316,7 +317,7 @@ def decode_vst(s: str) -> Optional[str]:
 
 
 def decode_vta(s: str) -> Optional[str]:
+    """placeholder"""
     if not s.startswith('VTA'):
         return None
     return None
-

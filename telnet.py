@@ -138,8 +138,8 @@ ErrorMap = {
     }
 
 def parse_error(s:str):
+    """Looks up error code that comes back from AVR"""
     return ErrorMap.get(s, None)
-
 
 SOURCE_MAP = sources.SourceMap()
 SOURCE_MAP.read_from_file()
@@ -183,10 +183,10 @@ def read_loop(tn: telnetlib.Telnet) -> None:
                 report("Phase control: unknown")
             continue
         if s == "PWR0":
-            report(f"Power is ON")
+            report("Power is ON")
             continue
         if s == "PWR1":
-            report(f"Power is OFF")
+            report("Power is OFF")
             continue
         if s.startswith("SVB"):
             report(f"AVR mac address: {s[3:]}\n")
@@ -196,19 +196,19 @@ def read_loop(tn: telnetlib.Telnet) -> None:
             continue
         if s.startswith('FN'):
             inputs = SOURCE_MAP.get(s[2:], f"unknown ({s})")
-            report(f"Input is {inputs}")
+            report(f"Input is {inputs}\n")
             continue
         if s.startswith('ATW'):
             flag = "on" if s == "ATW1" else "off"
-            report(f"loudness is {flag}"),
+            report(f"loudness is {flag}\n")
             continue
         if s.startswith('ATC'):
             fl = "on" if s == "ATC1" else "off"
-            report(f"eq is {fl}")
+            report(f"eq is {fl}\n")
             continue
         if s.startswith('ATD'):
             fl = "on" if s == "ATD1" else "off"
-            report(f"standing wave is {fl}")
+            report(f"standing wave is {fl}\n")
             continue
         if s.startswith('ATE'):
             num = s[3:]
@@ -251,7 +251,12 @@ def write_loop(tn: telnetlib.Telnet) -> None:
     """Main loop that reads user input and sends commands to the AVR"""
     s: Optional[str] = None
     while True:
-        command = input("command: ").strip()
+        try:
+            read = input("commad: ")
+        except  EOFError:
+            print("Goodbye!")
+            sys.exit(0)
+        command = read.strip()
         split_command = command.split()
         base_command = split_command[0] if len(split_command) > 0 else None
         second_arg = split_command[1] if len(split_command) > 1 else None
@@ -270,8 +275,8 @@ def write_loop(tn: telnetlib.Telnet) -> None:
         if command == "learn":
             # query the range of source codes to get their names back (if any):
             for i in range(0,60):
-               s = str(i).rjust(2,"0")
-               send(tn, f"?RGB{s}")
+                s = str(i).rjust(2,"0")
+                send(tn, f"?RGB{s}")
             continue
         if command == "save":
             SOURCE_MAP.save_to_file()
@@ -341,6 +346,8 @@ def write_loop(tn: telnetlib.Telnet) -> None:
 # document which ones, only include those in help
 
 def get_modes_with_prefix(prefix:str) -> set[str]:
+    """Returns all the map keys that start with prefix --- except when prefix
+    is itself a key, in that case, only preix is returned"""
     if inverseModeSetMap.get(prefix, None) is not None:
         return [prefix]
     s:set[str] = set({})
@@ -375,10 +382,11 @@ def change_mode(tn, l: list[str]) -> bool:
             print(i)
     return False
 
-def second_arg(cmd: str) -> str:
+def second_arg_fun(cmd: str) -> Optional[str]:
+    """second argument, if any"""
     l = cmd.split(" ")
     if len(l) < 2:
-        return ""
+        return None
     return l[1].strip()
 
 # Listening mode, in the order they appear in the spreadsheet.

@@ -149,7 +149,6 @@ def decode_ast(s:str) -> Optional[str]:
             break
         if int(s[idx]):
             r+=f"{v},\n"
-    r += "\n"
     return r
 
 

@@ -95,7 +95,8 @@ commandMap = {
     # cycles through surround modes (shortcut for "mode" command):
     "surr" : "0100SR",
 
-    "video status" : "?VST"
+    "video status" : "?VST",
+    "audio status" : "?AST"
 }
 
 def print_help():
@@ -233,6 +234,9 @@ def write_loop(tn: telnetlib.Telnet) -> None:
             continue
         if command == "status":
             get_status(tn)
+            continue
+        if command == "input":
+            send(tn, "?F") # input
             continue
         if command == "learn":
             # query the range of source codes to get their names back (if any):

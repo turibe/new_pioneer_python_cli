@@ -80,7 +80,7 @@ commandMap = {
     "random" : "35NW",
     "menu" : "36NW",
 
-    "info" : "?GAH",
+    "netinfo" : "?GAH",
     "list" : "?GAI",
     "top menu" : "19IP",
 
@@ -162,25 +162,8 @@ def read_loop(tn: telnetlib.Telnet) -> None:
             # report(f"Learning (maybe) from '{s[3:]}'") # only if new
             SOURCE_MAP.learn_input_from(s[3:])
             continue
-        if tone := decoders.decode_tone(s):
-            report(tone)
-            continue
-        if geh := decoders.decode_geh(s):
-            report(geh)
-            continue
-        # print("s has type", type(s)) # bytes
-        if fl := decoders.decode_fl(s):
-            sys.stdout.write(f"{fl}\r\n")
-            continue
-        if s.startswith('IS'): # TODO: use match
-            if s[2] == '0':
-                report("Phase control OFF")
-            elif s[2] == '1':
-                report("Phase control ON")
-            elif s[2] == '2':
-                report("Full band phase control on")
-            else:
-                report("Phase control: unknown")
+        if decoded := decoders.try_all(s):
+            report(decoded)
             continue
         if s == "PWR0":
             report("Power is ON")
@@ -210,26 +193,8 @@ def read_loop(tn: telnetlib.Telnet) -> None:
             fl = "on" if s == "ATD1" else "off"
             report(f"standing wave is {fl}\n")
             continue
-        if s.startswith('ATE'):
-            num = s[3:]
-            if "00" <= num <= "16":
-                report("Phase control: " + num + "ms")
-            else:
-                if num == "97":
-                    report("Phase control: AUTO")
-                elif num == "98":
-                    report("Phase control: UP")
-                elif num == "99":
-                    report("Phase control: DOWN")
-                else:
-                    report("Phase control: unknown")
-            continue
         if m := translate_mode(s):
             report(f"Listening mode is {m} ({s})")
-            continue
-        if s.startswith('AST') and decoders.decode_ast(s):
-            continue
-        if s.startswith('VTC') and decoders.decode_vtc(s):
             continue
         if s.startswith('SR'):
             code = s[2:]
@@ -237,9 +202,6 @@ def read_loop(tn: telnetlib.Telnet) -> None:
             if v:
                 report(f"mode is {v} ({s})")
                 continue
-        if vst := decoders.decode_vst(s):
-            report(vst)
-            continue
         if s.startswith('VOL'):
             continue
         # default:
@@ -252,7 +214,7 @@ def write_loop(tn: telnetlib.Telnet) -> None:
     s: Optional[str] = None
     while True:
         try:
-            read = input("commad: ")
+            read = input("command: ")
         except  EOFError:
             print("Goodbye!")
             sys.exit(0)

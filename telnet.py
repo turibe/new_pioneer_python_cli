@@ -17,11 +17,13 @@ from modes_display import modeDisplayMap
 from modes_set import modeSetMap, inverseModeSetMap
 
 import sources
-from decoders import *
+import decoders
+
+import config
+report = config.report
+print_lock = config.print_lock
 
 # HOST = "192.168.86.32"
-
-DEBUG = False
 
 commandMap = {
     "on" : "PO",
@@ -78,7 +80,7 @@ commandMap = {
     "random" : "35NW",
     "menu" : "36NW",
 
-    "info" : "?GAH",
+    "netinfo" : "?GAH",
     "list" : "?GAI",
     "top menu" : "19IP",
 
@@ -91,7 +93,9 @@ commandMap = {
     # cycles through thx modes, but input must be THX:
     "thx" : "0050SR",
     # cycles through surround modes (shortcut for "mode" command):
-    "surr" : "0100SR"
+    "surr" : "0100SR",
+
+    "video status" : "?VST"
 }
 
 def print_help():
@@ -134,8 +138,8 @@ ErrorMap = {
     }
 
 def parse_error(s:str):
+    """Looks up error code that comes back from AVR"""
     return ErrorMap.get(s, None)
-
 
 SOURCE_MAP = sources.SourceMap()
 SOURCE_MAP.read_from_file()
@@ -152,97 +156,69 @@ def read_loop(tn: telnetlib.Telnet) -> None:
         s = b.decode().strip()
         err = parse_error(s)
         if err:
-            print(f"ERROR: {err}")
+            report(f"ERROR: {err}")
             continue
         if s.startswith("RGB"):
-            # print(f"Learning (maybe) from '{s[3:]}'") # only if new
+            # report(f"Learning (maybe) from '{s[3:]}'") # only if new
             SOURCE_MAP.learn_input_from(s[3:])
             continue
-        if tone := decode_tone(s):
-            print(tone)
-            continue
-        if geh := decode_geh(s):
-            print(geh)
-            continue
-        # print("s has type", type(s)) # bytes
-        if fl := decode_fl(s):
-            sys.stdout.write(f"{fl}\r\n")
-            continue
-        if s.startswith('IS'):
-            if s[2] == '0':
-                print("Phase control OFF")
-            elif s[2] == '1':
-                print("Phase control ON")
-            elif s[2] == '2':
-                print("Full band phase control on")
-            else:
-                print("Phase control: unknown")
+        if decoded := decoders.try_all(s):
+            report(decoded)
             continue
         if s == "PWR0":
-            print(f"Power is ON")
+            report("Power is ON")
             continue
         if s == "PWR1":
-            print(f"Power is OFF")
+            report("Power is OFF")
+            continue
+        if s.startswith("SVB"):
+            report(f"AVR mac address: {s[3:]}\n")
+            continue
+        if s.startswith("SSI"):
+            report(f"AVR software version: {s[3:]}\n")
             continue
         if s.startswith('FN'):
-            print(f"Got input {s}\n")
             inputs = SOURCE_MAP.get(s[2:], f"unknown ({s})")
-            print(f"Input is {inputs}")
+            report(f"Input is {inputs}\n")
             continue
         if s.startswith('ATW'):
             flag = "on" if s == "ATW1" else "off"
-            print(f"loudness is {flag}"),
+            report(f"loudness is {flag}\n")
             continue
         if s.startswith('ATC'):
             fl = "on" if s == "ATC1" else "off"
-            print(f"eq is {fl}")
+            report(f"eq is {fl}\n")
             continue
         if s.startswith('ATD'):
             fl = "on" if s == "ATD1" else "off"
-            print(f"standing wave is {fl}")
-            continue
-        if s.startswith('ATE'):
-            num = s[3:]
-            if "00" <= num <= "16":
-                print("Phase control: " + num + "ms")
-            else:
-                if num == "97":
-                    print("Phase control: AUTO")
-                elif num == "98":
-                    print("Phase control: UP")
-                elif num == "99":
-                    print("Phase control: DOWN")
-                else:
-                    print("Phase control: unknown")
+            report(f"standing wave is {fl}\n")
             continue
         if m := translate_mode(s):
-            print(f"Listening mode is {m} ({s})")
-            continue
-        if s.startswith('AST') and decode_ast(s):
-            continue
-        if s.startswith('VTC') and decode_vtc(s):
+            report(f"Listening mode is {m} ({s})")
             continue
         if s.startswith('SR'):
             code = s[2:]
             v = modeSetMap.get(code, None)
             if v:
-                print(f"mode is {v} ({s})")
+                report(f"mode is {v} ({s})")
                 continue
-        if vst := decode_vst(s):
-            print(vst)
-            continue
         if s.startswith('VOL'):
             continue
         # default:
         if len(s) > 0:
-            print(f"Unknown status line {s}")
+            report(f"Unknown status line {s}")
 
 
 def write_loop(tn: telnetlib.Telnet) -> None:
     """Main loop that reads user input and sends commands to the AVR"""
     s: Optional[str] = None
     while True:
-        command = input("command: ").strip()
+        try:
+            read = input("command: ")
+        except  EOFError:
+            print("Goodbye!")
+            sys.exit(0)
+        command = read.strip()
         split_command = command.split()
         base_command = split_command[0] if len(split_command) > 0 else None
         second_arg = split_command[1] if len(split_command) > 1 else None
@@ -252,47 +228,49 @@ def write_loop(tn: telnetlib.Telnet) -> None:
             # sys.exit()
             return
         if command == "debug":
-            global DEBUG
-            DEBUG = not DEBUG
-            print(f"Debug is now {DEBUG}")
+            config.DEBUG = not config.DEBUG
+            report(f"Debug is now {config.DEBUG}")
             continue
         if command == "status":
             get_status(tn)
             continue
-        if command == "video status":
-            send(tn, "?VST")
-            continue
-        if command == "model":
-            send(tn, "?RGD")
-            continue
         if command == "learn":
             # query the range of source codes to get their names back (if any):
             for i in range(0,60):
-               s = str(i).rjust(2,"0")
-               send(tn, f"?RGB{s}")
+                s = str(i).rjust(2,"0")
+                send(tn, f"?RGB{s}")
             continue
         if command == "save":
             SOURCE_MAP.save_to_file()
             continue
         if command == "sources" or command == "inputs":
-            print_input_source_help()
+            with print_lock:
+                print_input_source_help()
+            continue
+        if command == "modes":
+            with print_lock:
+                print_mode_help()
             continue
         if base_command in ("help", "?"):
             if command in ("help", "?"):
-                print_help()
+                with print_lock:
+                    print_help()
                 continue
             if len(split_command) > 1 and split_command[1] in ["mode", "modes"]:
-                print_mode_help()
+                with print_lock:
+                    print_mode_help()
                 continue
             if len(split_command) > 1 and ("inputs".startswith(split_command[1]) or "sources".startswith(split_command[1])):
                 print_input_source_help()
                 continue
-            print(f"""Couldn't recognize help command "{command}" """)
+            report(f"""Couldn't recognize help command "{command}" """)
             continue
+        # to select from a menu:
         if base_command == "select" and second_arg:
             s = second_arg.rjust(2,"0") + "GFI"
             send(tn, s)
             continue
+        # to display from a menu:
         if base_command == "display" and second_arg:
             s = second_arg.rjust(5, "0") + "GCI" # may need to pad with zeros.
             send(tn, s)
@@ -302,13 +280,13 @@ def write_loop(tn: telnetlib.Telnet) -> None:
         if intval:
             if intval > 0:
                 intval = min(intval, 10)
-                print(f"Volume up {intval}")
+                report(f"Volume up {intval}")
                 for _x in range(0, intval):
                     send(tn, "VU")
                     time.sleep(0.1)
             if intval < 0:
                 intval = abs(max(intval, -30))
-                print(f"Volume down {intval}")
+                report(f"Volume down {intval}")
                 for _x in range(0, intval):
                     send(tn, "VD")
                     time.sleep(0.1)
@@ -321,7 +299,7 @@ def write_loop(tn: telnetlib.Telnet) -> None:
             change_mode(tn, split_command)
             continue
         if command != "":
-            print(f"Sending raw command {command}")
+            report(f"Sending raw command {command}")
             sys.stdout.flush()
             send(tn, command) # try raw command
 
@@ -330,6 +308,10 @@ def write_loop(tn: telnetlib.Telnet) -> None:
 # document which ones, only include those in help
 
 def get_modes_with_prefix(prefix:str) -> set[str]:
+    """Returns all the map keys that start with prefix --- except when prefix
+    is itself a key, in that case, only preix is returned"""
+    if inverseModeSetMap.get(prefix, None) is not None:
+        return [prefix]
     s:set[str] = set({})
     for i in inverseModeSetMap:
         if i.startswith(prefix):
@@ -347,24 +329,26 @@ def change_mode(tn, l: list[str]) -> bool:
         return False
     mset = get_modes_with_prefix(modestring)
     if len(mset) == 0:
-        print(f"Unknown mode {modestring}") # "Unknown mode <mode>" message
+        report(f"Unknown mode {modestring}") # "Unknown mode <mode>" message
         return False
     if len(mset) == 1:
         mode = mset.pop()
         m = inverseModeSetMap.get(mode)
         assert m is not None
-        print(f"trying to change mode to {modestring} ({m})")
+        report(f"trying to change mode to {modestring} ({m})")
         send(tn, m + "SR")
         return False
-    print("Which one do you mean? Options are:")
-    for i in mset:
-        print(i)
+    with print_lock:
+        print("Which one do you mean? Options are:")
+        for i in mset:
+            print(i)
     return False
 
-def second_arg(cmd: str) -> str:
+def second_arg_fun(cmd: str) -> Optional[str]:
+    """second argument, if any"""
     l = cmd.split(" ")
     if len(l) < 2:
-        return ""
+        return None
     return l[1].strip()
 
 # Listening mode, in the order they appear in the spreadsheet.

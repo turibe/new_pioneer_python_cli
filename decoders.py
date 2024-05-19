@@ -1,6 +1,9 @@
 
 from typing import Optional
 
+import config
+report = config.report
+
 # TODO: add unit tests
 
 def decode_fl(s:str) -> Optional[str]:
@@ -13,6 +16,18 @@ def decode_fl(s:str) -> Optional[str]:
     # print("original is", s, "result is", result)
     return result
 
+def decode_is(s:str) -> Optional[str]:
+    if s.startswith('IS'): # TODO: use match
+        if s[2] == '0':
+            r = "Phase control OFF"
+        elif s[2] == '1':
+            r = "Phase control ON"
+        elif s[2] == '2':
+            r = "Full band phase control on"
+        else:
+            r = "Phase control: unknown"
+        return r
+    return None
 
 def decode_geh(s: str) -> Optional[str]:
     if s.startswith("GDH"):
@@ -83,12 +98,12 @@ VTC_resolution_map = {
     "07": "1080/24p Resolution"
     }
 
-def decode_vtc(s: str) -> bool:
+def decode_vtc(s: str) -> Optional[str]:
     "Decodes a VTC (video resolution) status status string"
-    assert s.startswith('VTC')
+    if not s.startswith('VTC'):
+        return None
     s = s[3:]
-    print(VTC_resolution_map.get(s, "unknown VTC resolution"))
-    return True
+    return VTC_resolution_map.get(s, "unknown VTC resolution")
 
 
 CHANNEL_MAP = {
@@ -110,31 +125,32 @@ CHANNEL_MAP = {
     20: "XR"
 }
 
-def decode_ast(s:str) -> bool:
+def decode_ast(s:str) -> Optional[str]:
     "Decodes an AST return status string"
-    assert s.startswith('AST')
+    if not s.startswith('AST'):
+        return None
     s = s[3:]
-    print("Audio input signal: " + decode_ais( s[0:2] ))
-    print("Audio input frequency: " + decode_aif( s[2:4] ))
+    r = ""
+    r += "Audio input signal: " + decode_ais( s[0:2] ) + "\n"
+    r += "Audio input frequency: " + decode_aif( s[2:4] ) + "\n"
     # The manual starts counting at 1, so to fix this off-by-one, we do:
     s = '-' + s
     # channels...
-    print("Input Channels:")
+    r += "Input Channels:\n"
     for (i,v) in sorted(CHANNEL_MAP.items()):
         if i >= len(s):
             break
         if int(s[i]):
-            print(f"{v}, ")
-    print("")
-    print("Output Channels:")
+            r+=(f"{v},\n")
+    r += "\nOutput Channels:\n"
     for (i,v) in sorted(CHANNEL_MAP.items()):
         idx = i + 21
         if idx >= len(s):
             break
         if int(s[idx]):
-            print(f"{v}, ")
-    print("")
-    return True
+            r+=f"{v},\n"
+    r += "\n"
+    return r
 
 
 aif_map = {
@@ -201,15 +217,16 @@ def db_level(s:str) -> str:
 
 def decode_tone(s: str) -> Optional[str]:
     "readable version of the tone status"
+    r = None
     if s.startswith("TR"):
-        return "treble at " + db_level(s[2:4])
-    if s.startswith("BA"):
-        return "bass at " + db_level(s[2:4])
-    if s == "TO0":
-        return "tone off"
-    if s == "TO1":
-        return "tone on"
-    return None
+        r = "treble at " + db_level(s[2:4])
+    elif s.startswith("BA"):
+        r = "bass at " + db_level(s[2:4])
+    elif s == "TO0":
+        r = "tone off"
+    elif s == "TO1":
+        r = "tone on"
+    return r
 
 SIGNAL_MAP = {
     "0": "---",
@@ -275,9 +292,12 @@ COLOR_SPACE_MAP = {
     }
 
 def decode_vst(s: str) -> Optional[str]:
+    """Decodes a VSTXXXXX string from the AVR"""
     if not s.startswith('VST'):
         return None
-    print(f"Decoding {s}\n")
+    print(f"Debug is {config.DEBUG}")
+    if config.DEBUG:
+        report(f"Decoding {s}\n")
     result = ""
     s = "-" + s[3:] # for off-by-one
     signal = SIGNAL_MAP.get(s[1], "Unknown")
@@ -309,9 +329,38 @@ def decode_vst(s: str) -> Optional[str]:
     # ... TODO
     return result
 
+def decode_ate(s: str) -> Optional[str]:
+    if not s.startswith('ATE'):
+        return None
+    r = None
+    num = s[3:]
+    if "00" <= num <= "16":
+        r = "Phase control: " + num + "ms"
+    else:
+        if num == "97":
+            r = "Phase control: AUTO"
+        elif num == "98":
+            r = "Phase control: UP"
+        elif num == "99":
+            r = "Phase control: DOWN"
+        else:
+            r = "Phase control: unknown"
+    return r
+
 
 def decode_vta(s: str) -> Optional[str]:
+    """placeholder"""
     if not s.startswith('VTA'):
         return None
     return None
+
+DECODERS = [decode_fl, decode_is, decode_tone, decode_geh, decode_vst, decode_ast, decode_vtc, decode_fl, decode_ate]
+
+def try_all(s: str) -> Optional[str]:
+    r = None
+    for d in DECODERS:
+        if r := d(s):
+            break
+    return r
+    
 

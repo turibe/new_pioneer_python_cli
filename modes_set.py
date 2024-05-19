@@ -1,4 +1,5 @@
-"# This is the ****SR listening mode set:",
+"This is the ****SR listening mode set:"
+
 modeSetMap = {
 "0001":  "STEREO (cyclic)",
 "0010":  "STANDARD",
@@ -121,6 +122,5 @@ modeSetMap = {
 inverseModeSetMap = {}
 
 for (k,v) in modeSetMap.items():
-	vkey = v.lower().strip()
-	inverseModeSetMap[vkey] = k
-
+    vkey = v.lower().strip()
+    inverseModeSetMap[vkey] = k

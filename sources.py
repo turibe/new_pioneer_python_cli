@@ -39,13 +39,13 @@ defaultInputSourcesMap = {
 
 def check_exists(s):
     if os.path.isfile(s):
-       return s
+        return s
     return None
 
 sources_map_filename = "pioneer_avr_sources.json"
 
 class SourceMap:
-    
+
     def __init__(self):
         self.source_map = {}
         self.inverse_map = {}
@@ -62,34 +62,36 @@ class SourceMap:
     def get(self, *args, **kwargs):
         return self.source_map.get(*args, **kwargs)
 
-    def read_from_file(self):        
+    def read_from_file(self):
+        """Reads sources map from JSON file""" 
         cwd = os.getcwd()
         map_file = check_exists(f"{cwd}/{sources_map_filename}") or check_exists(os.path.expanduser(f"~/{sources_map_filename}"))
         if map_file:
             read_map = {}
             print(f"Reading sources map from {map_file}")
-            with open(map_file, "r") as f:
+            with open(map_file, "r", encoding='UTF-8') as f:
                 try:
                     read_map= json.load(f)
                 except Exception as e:
                     print(f"Error reading map from {map_file}", e)
             self.init_from_map(read_map)
         else:
-            print(f'Use "learn" to update sources, "save" to save them')
+            print('Use "learn" to update sources, "save" to save them')
 
     def save_to_file(self):
-        with open(sources_map_filename, "w") as outfile:
-                json.dump(self.source_map, outfile)
+        """Save sources map to a JSON file"""
+        with open(sources_map_filename, "w", encoding='UTF-8') as outfile:
+            json.dump(self.source_map, outfile)
         print(f"Wrote sources map to {sources_map_filename}")
 
     def register_reverse_source(self, k, v):
-        newk = v.lower()    
+        newk = v.lower()
         self.inverse_map[newk] = k + "FN"
 
-    def update_source(self, name: str, id: str):
-        print(f"Updating source {name} ({id})")
-        self.source_map[id] = name
-        self.register_reverse_source(id, name)
+    def update_source(self, name: str, source_id: str):
+        print(f"Updating source {name} ({source_id})")
+        self.source_map[source_id] = name
+        self.register_reverse_source(source_id, name)
         alias = self.alias_map.get(name)
         if alias:
             self.check_aliases(name, alias)
@@ -107,7 +109,8 @@ class SourceMap:
             # print(f"{a} -> {b}")
         else:
             if self.inverse_map.get(b) is None and self.inverse_map.get(a):
-                inverseSourcesMap[b] = inverseSourcesMap[a]
+                # inverseSourcesMap[b] = inverseSourcesMap[a] # ??? FIX
+                self.inverse_map[b] = self.inverse_map[a]
                 # print(f"{b} -> {a}")
 
     def add_aliases(self):
@@ -117,9 +120,8 @@ class SourceMap:
         self.add_alias("iradio", "internet radio")
 
     def learn_input_from(self, s):
-        id = s[0:2]
+        source_id = s[0:2]
         name = s[3:]
-        if self.source_map.get(id, None) != name:
-            print(f"Updating source name {name} for {id}")
-            self.update_source(name, id)
-
+        if self.source_map.get(source_id, None) != name:
+            print(f"Updating source name {name} for {source_id}")
+            self.update_source(name, source_id)

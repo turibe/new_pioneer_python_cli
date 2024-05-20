@@ -1,0 +1,65 @@
+
+{
+    "on" : ["PO", "power on"],
+    "off": ["PF", "power off"],
+    "up": ["VU", "volume up"],
+    "+": ["VU", "volume up"],
+    "down": ["VD", "volume down"],
+    "-": ["VD", "volume down"],
+    "mute": ["MO", "sound off"],
+    "unmute": ["MF", "sound back on"],
+
+    "volume": ["?V", "get volume"],
+
+    "tone" : ["9TO", "change tone, cyclic"],
+    "tone off" : ["0TO", "tone bypass"],
+    "tone on" : ["1TO", "turn tone on"],
+    "treble up" : ["TI", "increase treble"],
+    "treble down" : ["TD", "decrease treble"],
+    "treble reset" : ["06TR", "reset treble setting"],
+    "bass up" : ["BI", "increase bass"],
+    "bass down" : ["BD", "decrease bass"],
+    "bass reset" : ["06BA", "reset bass to 0"],
+    "mcacc" : ["MC0", "change MCACC, cyclic"],
+
+    "phase" : ["IS9", "cycle through phase control, recommended to be on"],
+
+    "stereo" : ["0001SR", "cycle through stereo modes"],
+    "unplugged" : ["0109SR", "unplugged mode"],
+    "extended" : ["0112SR", "extended stereo mode; uses all speakers"],
+
+    "mode" : ["?S", "query current mode"],
+    "model" : ["?RGD", "query current model"],
+    "mac address" : ["?SVB", "query mac address"],
+    "software version" : ["?SSI", "query software version"],
+    "info" : ["?RGD, ?SVB, ?SSI", "query joint info"],
+
+    "loud" : ["9ATW", "toggle loudness (cyclic)"],
+
+    "hdmi" : ["31FN", "cycle through hdmi inputs (TODO: check)"],
+
+    "start" : ["30NW", "menu start (network)"],
+    "next" : ["13NW", "next (network)"],
+    "pause" : ["11NW", "pause (network)"],
+    "play" :  ["10NW", "play (network)"],
+    "previous" : ["12NW", "previous (network)"],
+    "stop" : ["20NW", "stop (network)"],
+    "clear" : ["33NW", "clear (network)"],
+    "repeat" : ["34NW", "repeat (network)"],
+    "random" : ["35NW", "random (network)"],
+    "menu" : ["36NW", "menu (network)"],
+    "netinfo" : ["?GAH", "netinfo (network)"],
+    "list" : ["?GAI", "list (network)"],
+    "top menu" : ["19IP", "top menu (network)"],
+
+    "nextpreset" : ["TPI", "next tuner preset"],
+    "prevpreset" : ["TPD", "prevous tuner preset"],
+    "mpx" : ["05TN", "mpx ?"],
+
+    "thx" : ["0050SR", "cycles through thx modes, but input must be THX"],
+    "surr" : ["0100SR", "cycles through surround modes (shortcut for \"mode\" command)"],
+
+    "video" : ["?VST", "get video info"],
+    "audio" : ["?AST, ?ATD, ?BA, ?TR", "get audio info"],
+    "input" : ["?F", "Show current input"]
+}

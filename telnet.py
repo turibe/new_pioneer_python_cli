@@ -4,6 +4,7 @@
 Main script for controlling the AVR via telnet.
 """
 
+from typing import Optional
 import sys
 import telnetlib
 
@@ -11,7 +12,9 @@ import threading
 import argparse
 import time
 
-from typing import Optional
+import json
+
+# local imports:
 
 from modes_display import modeDisplayMap
 from modes_set import modeSetMap, inverseModeSetMap
@@ -25,79 +28,20 @@ print_lock = config.print_lock
 
 # HOST = "192.168.86.32"
 
-commandMap = {
-    "on" : "PO",
-    "off": "PF",
-    "up": "VU",
-    "+": "VU",
-    "down": "VD",
-    "-": "VD",
-    "mute": "MO",
-    "unmute": "MF",
+# TODO: could have a pandora mode, ipod mode, radio mode, etc.
 
-    "volume": "?V",
+commandMap = {}
+cfilename = "commandMap.json"
+try:
+    with open(cfilename) as f:
+        commandMap = json.load(f)
+        report(f"Read commandMap from {cfilename}")
+except Exception as e:
+    report(f"Could not read commandMap from {cfilename}, {e}")
+    sys.exit(1)
+           
 
-    "tone" : "9TO", # cyclic
-    "tone off" : "0TO",
-    "tone on" : "1TO",
-    "treble up" : "TI",
-    "treble down" : "TD",
-    "treble reset" : "06TR",
-    "bass up" : "BI",
-    "bass down" : "BD",
-    "bass reset" : "06BA",
 
-    "mcacc" : "MC0", # cyclic
-
-    # phase control is recommended to be on:
-    "phase" : "IS9", # cyclic
-
-    "stereo" : "0001SR", # cycle through stereo modes
-    "unplugged" : "0109SR",
-    "extended" : "0112SR",
-
-    "mode" : "?S",
-    "model" : "?RGD",
-    "mac address" : "?SVB",
-    "software version" : "?SSI",
-
-    "loud" : "9ATW", # cyclic
-
-    # commands for switching inputs have the form XXFN, now derived from inputSourcesMap.
-    # "phono" : "00FN", # invalid command
-    # "hdmi" : "31FN", # cyclic
-
-    # TODO: could have a pandora mode, radio mode, etc.
-    # Pandora ones:
-    "start" : "30NW",
-    "next" : "13NW",
-    "pause" : "11NW",
-    "play" : "10NW",
-    "previous" : "12NW",
-    "stop" : "20NW",
-    "clear" : "33NW",
-    "repeat" : "34NW",
-    "random" : "35NW",
-    "menu" : "36NW",
-
-    "netinfo" : "?GAH",
-    "list" : "?GAI",
-    "top menu" : "19IP",
-
-    # Tuner ones:
-    "nextpreset" : "TPI",
-    "prevpreset" : "TPD",
-    "mpx" : "05TN",
-
-    # Cyclic mode shortcuts:
-    # cycles through thx modes, but input must be THX:
-    "thx" : "0050SR",
-    # cycles through surround modes (shortcut for "mode" command):
-    "surr" : "0100SR",
-
-    "video status" : "?VST",
-    "audio status" : "?AST"
-}
 
 def print_help():
     "Prints help for the main commands"
@@ -105,7 +49,8 @@ def print_help():
     # l.sort()
     for x in l:
         print(x)
-    print("""Use "help mode" for information on modes, "help sources" for changing input sources, "quit" to exit\n""")
+    print("""Use "help mode" for information on modes, "help sources" for changing input sources""")
+    print("""    "help <command>" for help on a command, or "quit" to exit\n""")
 
 def print_mode_help():
     "Lists the mode change options (not all work)"
@@ -173,26 +118,26 @@ def read_loop(tn: telnetlib.Telnet) -> None:
             report("Power is OFF")
             continue
         if s.startswith("SVB"):
-            report(f"AVR mac address: {s[3:]}\n")
+            report(f"AVR mac address: {s[3:]}")
             continue
         if s.startswith("SSI"):
-            report(f"AVR software version: {s[3:]}\n")
+            report(f"AVR software version: {s[3:]}")
             continue
         if s.startswith('FN'):
             inputs = SOURCE_MAP.get(s[2:], f"unknown ({s})")
-            report(f"Input is {inputs}\n")
+            report(f"Input is {inputs}")
             continue
         if s.startswith('ATW'):
             flag = "on" if s == "ATW1" else "off"
-            report(f"loudness is {flag}\n")
+            report(f"loudness is {flag}")
             continue
         if s.startswith('ATC'):
             fl = "on" if s == "ATC1" else "off"
-            report(f"eq is {fl}\n")
+            report(f"eq is {fl}")
             continue
         if s.startswith('ATD'):
             fl = "on" if s == "ATD1" else "off"
-            report(f"standing wave is {fl}\n")
+            report(f"standing wave is {fl}")
             continue
         if m := translate_mode(s):
             report(f"Listening mode is {m} ({s})")
@@ -204,6 +149,9 @@ def read_loop(tn: telnetlib.Telnet) -> None:
                 report(f"mode is {v} ({s})")
                 continue
         if s.startswith('VOL'):
+            continue
+        if s.startswith('RGD'):
+            report(f"AVR model info: {s}")
             continue
         # default:
         if len(s) > 0:
@@ -235,9 +183,6 @@ def write_loop(tn: telnetlib.Telnet) -> None:
         if command == "status":
             get_status(tn)
             continue
-        if command == "input":
-            send(tn, "?F") # input
-            continue
         if command == "learn":
             # query the range of source codes to get their names back (if any):
             for i in range(0,60):
@@ -260,14 +205,26 @@ def write_loop(tn: telnetlib.Telnet) -> None:
                 with print_lock:
                     print_help()
                 continue
-            if len(split_command) > 1 and split_command[1] in ["mode", "modes"]:
-                with print_lock:
-                    print_mode_help()
-                continue
-            if len(split_command) > 1 and ("inputs".startswith(split_command[1]) or "sources".startswith(split_command[1])):
-                print_input_source_help()
-                continue
-            report(f"""Couldn't recognize help command "{command}" """)
+            second = split_command[1] if len(split_command) > 1 else None
+            if second:
+                if p:= commandMap.get(second, None):
+                    report(p[1])
+                    continue
+            
+                if second in ["mode", "modes"]:
+                    with print_lock:
+                        print_mode_help()
+                    continue
+                
+                if "inputs".startswith(second) or "sources".startswith(second):
+                    print_input_source_help()
+                    continue
+
+                if SOURCE_MAP.inverse_map.get(second, None):
+                    report(f"Change source to {second}")
+                    continue
+                
+            report(f"""Couldn not recognize help command "{command}" """)
             continue
         # to select from a menu:
         if base_command == "select" and second_arg:
@@ -295,9 +252,13 @@ def write_loop(tn: telnetlib.Telnet) -> None:
                     send(tn, "VD")
                     time.sleep(0.1)
             continue
-        s = commandMap.get(command, None) or SOURCE_MAP.inverse_map.get(command, None) # changing to a source by using the source name as the command
-        if s:
-            send(tn, s)
+        if p := commandMap.get(command, None):        
+            s = p[0]
+            for c in s.split(","):
+                send(tn, c.strip())
+            continue
+        if p := SOURCE_MAP.inverse_map.get(command, None): # changing to a source by using the source name as the command
+            send(tn, p)
             continue
         if base_command == "mode":
             change_mode(tn, split_command)

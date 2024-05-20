@@ -31,20 +31,19 @@ print_lock = config.print_lock
 
 # TODO: could have a pandora mode, ipod mode, radio mode, etc.
 
-def load_command_map():
+def load_command_map(folder:str):
     """Loads map of commands from JSON file"""
-    cwd = os.getcwd()
-    cfilename = os.path.join(cwd, "commandMap.json")
+    cfilename = os.path.join(folder, "commandMap.json")
     try:
-        with open(cfilename) as f:
+        with open(cfilename, encoding='UTF-8') as f:
             m = json.load(f)
             report(f"Read commandMap from {cfilename}")
             return m
-    except Exception as e:
-        report(f"Could not read commandMap from {cfilename}, {e}")
+    except Exception as ex:
+        report(f"Could not read commandMap from {cfilename}, {ex}")
         sys.exit(1)
 
-commandMap = load_command_map()
+commandMap = {}
 
 def print_help():
     "Prints help for the main commands"
@@ -358,6 +357,11 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument('host', metavar='host', type=str, help='address of AVR')
+
+    # print(f"argv: {sys.argv}")
+    global command_map
+    script_folder = os.path.dirname(os.path.abspath(sys.argv[0]))
+    command_map = load_command_map(script_folder)
 
     args = parser.parse_args()
     print(f"AVR hostname/address is {args.host}")

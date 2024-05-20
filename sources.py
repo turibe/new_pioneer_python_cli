@@ -2,6 +2,7 @@
 import json
 import os
 
+from typing import Optional
 
 # Default set. To read query the AVR's actual names and save to json, use "learn":
 
@@ -37,7 +38,7 @@ defaultInputSourcesMap = {
     "48" : "MHL" # device input, not working on test AVR
 }
 
-def check_exists(s):
+def check_exists(s:str) -> Optional[str]:
     if os.path.isfile(s):
         return s
     return None
@@ -65,7 +66,8 @@ class SourceMap:
     def read_from_file(self):
         """Reads sources map from JSON file""" 
         cwd = os.getcwd()
-        map_file = check_exists(f"{cwd}/{sources_map_filename}") or check_exists(os.path.expanduser(f"~/{sources_map_filename}"))
+        curr = os.path.join(cwd, sources_map_filename)
+        map_file = check_exists(curr) or check_exists(os.path.expanduser(f"~/{sources_map_filename}"))
         if map_file:
             read_map = {}
             print(f"Reading sources map from {map_file}")

@@ -6,6 +6,7 @@ Main script for controlling the AVR via telnet.
 
 from typing import Optional
 import sys
+import os
 import telnetlib
 
 import threading
@@ -30,18 +31,20 @@ print_lock = config.print_lock
 
 # TODO: could have a pandora mode, ipod mode, radio mode, etc.
 
-commandMap = {}
-cfilename = "commandMap.json"
-try:
-    with open(cfilename) as f:
-        commandMap = json.load(f)
-        report(f"Read commandMap from {cfilename}")
-except Exception as e:
-    report(f"Could not read commandMap from {cfilename}, {e}")
-    sys.exit(1)
-           
+def load_command_map():
+    """Loads map of commands from JSON file"""
+    cwd = os.getcwd()
+    cfilename = os.path.join(cwd, "commandMap.json")
+    try:
+        with open(cfilename) as f:
+            m = json.load(f)
+            report(f"Read commandMap from {cfilename}")
+            return m
+    except Exception as e:
+        report(f"Could not read commandMap from {cfilename}, {e}")
+        sys.exit(1)
 
-
+commandMap = load_command_map()
 
 def print_help():
     "Prints help for the main commands"
@@ -208,23 +211,19 @@ def write_loop(tn: telnetlib.Telnet) -> None:
             second = split_command[1] if len(split_command) > 1 else None
             if second:
                 if p:= commandMap.get(second, None):
-                    report(p[1])
+                    report(f"{second}: {p[1]}")
                     continue
-            
                 if second in ["mode", "modes"]:
                     with print_lock:
                         print_mode_help()
                     continue
-                
                 if "inputs".startswith(second) or "sources".startswith(second):
                     print_input_source_help()
                     continue
-
                 if SOURCE_MAP.inverse_map.get(second, None):
-                    report(f"Change source to {second}")
+                    report(f"{second}: change source to {second}")
                     continue
-                
-            report(f"""Couldn not recognize help command "{command}" """)
+            report(f"""Could not recognize help command "{command}" """)
             continue
         # to select from a menu:
         if base_command == "select" and second_arg:

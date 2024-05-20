@@ -18,7 +18,7 @@ See also [a new Rust implementation of the same functionality here](https://gith
 ## Usage:
 
 1. Find out your AVR's IP address.
-2. Run "python3 telnet.py <ipaddress>".
+2. Run "python3 telnet.py \<ipaddress\>".
 
 ## Some commands:
 

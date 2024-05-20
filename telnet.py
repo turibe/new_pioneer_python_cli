@@ -167,7 +167,7 @@ def write_loop(tn: telnetlib.Telnet) -> None:
     while True:
         try:
             read = input("command: ")
-        except  EOFError:
+        except EOFError:
             print("Goodbye!")
             sys.exit(0)
         command = read.strip()
@@ -362,7 +362,11 @@ if __name__ == "__main__":
     args = parser.parse_args()
     print(f"AVR hostname/address is {args.host}")
 
-    telnet_connection = telnetlib.Telnet(args.host, port=23)
+    try:
+        telnet_connection = telnetlib.Telnet(args.host, port=23)
+    except Exception as e:
+        print(f"Could not connect to {args.host}: {e}")
+        sys.exit(1)
     # telnet_connection.set_debuglevel(100)
     # time.sleep(0.5)
 

@@ -43,7 +43,8 @@ def load_command_map(folder:str):
         report(f"Could not read commandMap from {cfilename}, {ex}")
         sys.exit(1)
 
-commandMap = {}
+global commandMap
+commandMap: dict[str,list[str]] = {}
 
 def print_help():
     "Prints help for the main commands"
@@ -250,12 +251,15 @@ def write_loop(tn: telnetlib.Telnet) -> None:
                     send(tn, "VD")
                     time.sleep(0.1)
             continue
-        if p := commandMap.get(command, None):        
+        if p := commandMap.get(command, None):
             s = p[0]
             for c in s.split(","):
+                if config.DEBUG:
+                    print(f"Sending {c}")
                 send(tn, c.strip())
             continue
-        if p := SOURCE_MAP.inverse_map.get(command, None): # changing to a source by using the source name as the command
+        if p := SOURCE_MAP.inverse_map.get(command, None):
+            # changing to a source by using the source name as the command
             send(tn, p)
             continue
         if base_command == "mode":
@@ -274,7 +278,7 @@ def get_modes_with_prefix(prefix:str) -> set[str]:
     """Returns all the map keys that start with prefix --- except when prefix
     is itself a key, in that case, only preix is returned"""
     if inverseModeSetMap.get(prefix, None) is not None:
-        return [prefix]
+        return set([prefix])
     s:set[str] = set({})
     for i in inverseModeSetMap:
         if i.startswith(prefix):
@@ -359,9 +363,8 @@ if __name__ == "__main__":
     parser.add_argument('host', metavar='host', type=str, help='address of AVR')
 
     # print(f"argv: {sys.argv}")
-    global command_map
     script_folder = os.path.dirname(os.path.abspath(sys.argv[0]))
-    command_map = load_command_map(script_folder)
+    commandMap = load_command_map(script_folder)
 
     args = parser.parse_args()
     print(f"AVR hostname/address is {args.host}")

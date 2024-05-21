@@ -38,7 +38,7 @@ defaultInputSourcesMap = {
     "48" : "MHL" # device input, not working on test AVR
 }
 
-def check_exists(s:str) -> Optional[str]:
+def check_exists(s: str) -> Optional[str]:
     if os.path.isfile(s):
         return s
     return None
@@ -63,9 +63,9 @@ class SourceMap:
     def get(self, *args, **kwargs):
         return self.source_map.get(*args, **kwargs)
 
-    def read_from_file(self):
+    def read_from_file(self) -> None:
         """Reads sources map from JSON file""" 
-        cwd = os.getcwd()
+        cwd: str = os.getcwd()
         curr = os.path.join(cwd, sources_map_filename)
         map_file = check_exists(curr) or check_exists(os.path.expanduser(f"~/{sources_map_filename}"))
         if map_file:
@@ -86,7 +86,7 @@ class SourceMap:
             json.dump(self.source_map, outfile)
         print(f"Wrote sources map to {sources_map_filename}")
 
-    def register_reverse_source(self, k, v):
+    def register_reverse_source(self, k: str, v):
         newk = v.lower()
         self.inverse_map[newk] = k + "FN"
 
@@ -105,7 +105,7 @@ class SourceMap:
         self.alias_map[b] = a
         self.check_aliases(a,b)
 
-    def check_aliases(self,a,b):
+    def check_aliases(self, a: str, b:str):
         if self.inverse_map.get(a) is None and self.inverse_map.get(b):
             self.inverse_map[a] = self.inverse_map[b]
             # print(f"{a} -> {b}")

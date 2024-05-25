@@ -37,3 +37,8 @@ See also [a new Rust implementation of the same functionality here](https://gith
 - `status`          [print status]
 
 - Use control-D to exit.
+
+
+If you have customized your input names, `learn` gets them from the AVR, after which they are available as commands.
+`save` saves a json file that can be loaded in the future at startup.
+

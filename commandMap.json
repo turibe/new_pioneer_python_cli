@@ -9,7 +9,7 @@
     "mute": ["MO", "sound off"],
     "unmute": ["MF", "sound back on"],
 
-    "volume": ["?V", "get volume"],
+    "vol": ["?V", "get volume"],
 
     "tone" : ["9TO", "change tone, cyclic"],
     "tone off" : ["0TO", "tone bypass"],

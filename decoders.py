@@ -214,6 +214,11 @@ def db_level(s:str) -> str:
     db = 6 - n
     return f"{db}dB"
 
+def vol_db_level(s:str) -> str:
+    n = int(s)
+    db = (n - 161)/2.0
+    return f"{db}dB"
+
 def decode_tone(s: str) -> Optional[str]:
     "readable version of the tone status"
     r = None

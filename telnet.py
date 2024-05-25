@@ -152,6 +152,8 @@ def read_loop(tn: telnetlib.Telnet) -> None:
                 report(f"mode is {v} ({s})")
                 continue
         if s.startswith('VOL'):
+            db = decoders.vol_db_level(s[3:])
+            report(f"volume is {db}")
             continue
         if s.startswith('RGD'):
             report(f"AVR model info: {s}")

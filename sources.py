@@ -2,6 +2,7 @@
 import json
 import os
 
+from typing import Optional
 
 # Default set. To read query the AVR's actual names and save to json, use "learn":
 
@@ -37,7 +38,7 @@ defaultInputSourcesMap = {
     "48" : "MHL" # device input, not working on test AVR
 }
 
-def check_exists(s):
+def check_exists(s: str) -> Optional[str]:
     if os.path.isfile(s):
         return s
     return None
@@ -62,10 +63,11 @@ class SourceMap:
     def get(self, *args, **kwargs):
         return self.source_map.get(*args, **kwargs)
 
-    def read_from_file(self):
+    def read_from_file(self) -> None:
         """Reads sources map from JSON file""" 
-        cwd = os.getcwd()
-        map_file = check_exists(f"{cwd}/{sources_map_filename}") or check_exists(os.path.expanduser(f"~/{sources_map_filename}"))
+        cwd: str = os.getcwd()
+        curr = os.path.join(cwd, sources_map_filename)
+        map_file = check_exists(curr) or check_exists(os.path.expanduser(f"~/{sources_map_filename}"))
         if map_file:
             read_map = {}
             print(f"Reading sources map from {map_file}")
@@ -84,7 +86,7 @@ class SourceMap:
             json.dump(self.source_map, outfile)
         print(f"Wrote sources map to {sources_map_filename}")
 
-    def register_reverse_source(self, k, v):
+    def register_reverse_source(self, k: str, v):
         newk = v.lower()
         self.inverse_map[newk] = k + "FN"
 
@@ -103,13 +105,12 @@ class SourceMap:
         self.alias_map[b] = a
         self.check_aliases(a,b)
 
-    def check_aliases(self,a,b):
+    def check_aliases(self, a: str, b:str):
         if self.inverse_map.get(a) is None and self.inverse_map.get(b):
             self.inverse_map[a] = self.inverse_map[b]
             # print(f"{a} -> {b}")
         else:
             if self.inverse_map.get(b) is None and self.inverse_map.get(a):
-                # inverseSourcesMap[b] = inverseSourcesMap[a] # ??? FIX
                 self.inverse_map[b] = self.inverse_map[a]
                 # print(f"{b} -> {a}")
 

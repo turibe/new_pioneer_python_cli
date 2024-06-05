@@ -158,6 +158,12 @@ def read_loop(tn: telnetlib.Telnet) -> None:
         if s.startswith('RGD'):
             report(f"AVR model info: {s}")
             continue
+        if s.startswith('VTA'):
+            report(f"Got video parameter prohibition info {s}")
+            continue
+        if s.startswith('AUA'):
+            report(f"Got audio parameter prohibition info {s}")
+            continue
         # default:
         if len(s) > 0:
             report(f"Unknown status line {s}")

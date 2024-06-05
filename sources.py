@@ -111,7 +111,6 @@ class SourceMap:
             # print(f"{a} -> {b}")
         else:
             if self.inverse_map.get(b) is None and self.inverse_map.get(a):
-                # inverseSourcesMap[b] = inverseSourcesMap[a] # ??? FIX
                 self.inverse_map[b] = self.inverse_map[a]
                 # print(f"{b} -> {a}")
 
